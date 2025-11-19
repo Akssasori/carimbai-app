@@ -1,15 +1,18 @@
-import { useState, useEffect } from 'react';
-import './HomeScreen.css';
-import type { Card, QRTokenResponse } from '../types';
-import { apiService } from '../services/api';
-import QRCodeModal from './QRCodeModal';
+import { useState, useEffect } from "react";
+import "./HomeScreen.css";
+import type { Card, QRTokenResponse } from "../types";
+import { apiService } from "../services/api";
+import QRCodeModal from "./QRCodeModal";
 
 interface HomeScreenProps {
   customerId: number;
   customerName?: string;
 }
 
-const HomeScreen = ({ customerId, customerName = 'Cliente' }: HomeScreenProps) => {
+const HomeScreen = ({
+  customerId,
+  customerName = "Cliente",
+}: HomeScreenProps) => {
   const [card, setCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +29,7 @@ const HomeScreen = ({ customerId, customerName = 'Cliente' }: HomeScreenProps) =
           setCard(response.cards[0]);
         }
       } catch (err) {
-        setError('Erro ao carregar cartão de fidelidade');
+        setError("Erro ao carregar cartão de fidelidade");
         console.error(err);
       } finally {
         setLoading(false);
@@ -44,8 +47,8 @@ const HomeScreen = ({ customerId, customerName = 'Cliente' }: HomeScreenProps) =
       const token = await apiService.getCardQR(card.cardId);
       setQrToken(token);
     } catch (err) {
-      console.error('Erro ao gerar QR Code:', err);
-      alert('Erro ao gerar QR Code. Tente novamente.');
+      console.error("Erro ao gerar QR Code:", err);
+      alert("Erro ao gerar QR Code. Tente novamente.");
     } finally {
       setLoadingQR(false);
     }
@@ -66,7 +69,7 @@ const HomeScreen = ({ customerId, customerName = 'Cliente' }: HomeScreenProps) =
   if (error || !card) {
     return (
       <div className="home-screen">
-        <div className="error">{error || 'Nenhum cartão encontrado'}</div>
+        <div className="error">{error || "Nenhum cartão encontrado"}</div>
       </div>
     );
   }
@@ -88,14 +91,16 @@ const HomeScreen = ({ customerId, customerName = 'Cliente' }: HomeScreenProps) =
               <p className="merchant-name">{card.merchantName}</p>
               <p className="reward-info">Recompensa: {card.rewardName}</p>
             </div>
-            
+
             <div className="stamps-grid">
               {[...Array(card.stampsNeeded)].map((_, index) => (
-                <div 
-                  key={index} 
-                  className={`stamp ${index < card.stampsCount ? 'filled' : ''}`}
+                <div
+                  key={index}
+                  className={`stamp ${
+                    index < card.stampsCount ? "filled" : ""
+                  }`}
                 >
-                  {index < card.stampsCount ? '✓' : index + 1}
+                  {index < card.stampsCount ? "✓" : index + 1}
                 </div>
               ))}
             </div>
@@ -105,8 +110,8 @@ const HomeScreen = ({ customerId, customerName = 'Cliente' }: HomeScreenProps) =
                 {card.stampsCount} de {card.stampsNeeded} carimbos
               </p>
               <div className="progress-bar">
-                <div 
-                  className="progress-fill" 
+                <div
+                  className="progress-fill"
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
@@ -127,8 +132,25 @@ const HomeScreen = ({ customerId, customerName = 'Cliente' }: HomeScreenProps) =
             onClick={handleShowQR}
             disabled={loadingQR}
           >
-            <span className="btn-icon">📱</span>
-            {loadingQR ? 'Gerando...' : 'Mostrar QR Code'}
+            <svg
+              className="btn-icon"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ marginRight: "8px" }}
+            >
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+              <path d="M14 14h.01M14 17h.01M17 14h.01M17 17h.01M20 14h.01M20 17h.01M20 20h.01M17 20h.01M14 20h.01" />
+            </svg>
+
+            {loadingQR ? "Gerando..." : "Mostrar QR Code"}
           </button>
         </div>
       </main>
