@@ -58,8 +58,20 @@
 .card-header h2 {
   font-size: 1.5rem;
   color: #333;
-  margin: 0;
+  margin: 0 0 0.5rem 0;
   font-weight: 600;
+}
+
+.merchant-name {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0 0 0.25rem 0;
+}
+
+.reward-info {
+  font-size: 0.85rem;
+  color: #999;
+  margin: 0;
 }
 
 .stamps-grid {
@@ -117,6 +129,27 @@
   border-radius: 4px;
 }
 
+.reward-available {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+  border-radius: 1rem;
+  text-align: center;
+  color: white;
+}
+
+.reward-badge {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.reward-available p {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
 .actions {
   padding: 0 0 2rem 0;
   display: flex;
@@ -150,6 +183,21 @@
 
 .btn-icon {
   font-size: 1.5rem;
+}
+
+.loading,
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.error {
+  color: #ffcccc;
 }
 
 @media (max-width: 480px) {

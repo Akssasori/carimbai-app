@@ -1,10 +1,60 @@
+import { useState, useEffect } from 'react';
 import './HomeScreen.css';
+import type { Card } from '../types';
+import { apiService } from '../services/api';
 
 interface HomeScreenProps {
+  customerId: number;
   customerName?: string;
 }
 
-const HomeScreen = ({ customerName = 'Cliente' }: HomeScreenProps) => {
+const HomeScreen = ({ customerId, customerName = 'Cliente' }: HomeScreenProps) => {
+  const [card, setCard] = useState<Card | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCard = async () => {
+      try {
+        setLoading(true);
+        const response = await apiService.getCustomerCards(customerId);
+        
+        if (response.cards && response.cards.length > 0) {
+          setCard(response.cards[0]);
+        }
+      } catch (err) {
+        setError('Erro ao carregar cartão de fidelidade');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCard();
+  }, [customerId]);
+
+  const handleShowQR = () => {
+    console.log('Mostrar QR Code para cardId:', card?.cardId);
+  };
+
+  if (loading) {
+    return (
+      <div className="home-screen">
+        <div className="loading">Carregando...</div>
+      </div>
+    );
+  }
+
+  if (error || !card) {
+    return (
+      <div className="home-screen">
+        <div className="error">{error || 'Nenhum cartão encontrado'}</div>
+      </div>
+    );
+  }
+
+  const progress = (card.stampsCount / card.stampsNeeded) * 100;
+
   return (
     <div className="home-screen">
       <header className="home-header">
@@ -16,34 +66,45 @@ const HomeScreen = ({ customerName = 'Cliente' }: HomeScreenProps) => {
         <div className="card-container">
           <div className="loyalty-card">
             <div className="card-header">
-              <h2>Seu Cartão</h2>
+              <h2>{card.programName}</h2>
+              <p className="merchant-name">{card.merchantName}</p>
+              <p className="reward-info">Recompensa: {card.rewardName}</p>
             </div>
             
             <div className="stamps-grid">
-              {[...Array(10)].map((_, index) => (
+              {[...Array(card.stampsNeeded)].map((_, index) => (
                 <div 
                   key={index} 
-                  className={`stamp ${index < 0 ? 'filled' : ''}`}
+                  className={`stamp ${index < card.stampsCount ? 'filled' : ''}`}
                 >
-                  {index < 0 ? '✓' : index + 1}
+                  {index < card.stampsCount ? '✓' : index + 1}
                 </div>
               ))}
             </div>
 
             <div className="progress-info">
-              <p className="stamps-count">0 de 10 carimbos</p>
+              <p className="stamps-count">
+                {card.stampsCount} de {card.stampsNeeded} carimbos
+              </p>
               <div className="progress-bar">
                 <div 
                   className="progress-fill" 
-                  style={{ width: '0%' }}
+                  style={{ width: `${progress}%` }}
                 ></div>
               </div>
             </div>
+
+            {card.hasReward && (
+              <div className="reward-available">
+                <span className="reward-badge">🎉</span>
+                <p>Você tem uma recompensa disponível!</p>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="actions">
-          <button className="btn-primary">
+          <button className="btn-primary" onClick={handleShowQR}>
             <span className="btn-icon">📱</span>
             Mostrar QR Code
           </button>
