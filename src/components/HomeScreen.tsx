@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import './HomeScreen.css';
-import type { Card } from '../types';
+import type { Card, QRTokenResponse } from '../types';
 import { apiService } from '../services/api';
+import QRCodeModal from './QRCodeModal';
 
 interface HomeScreenProps {
   customerId: number;
@@ -12,13 +13,15 @@ const HomeScreen = ({ customerId, customerName = 'Cliente' }: HomeScreenProps) =
   const [card, setCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [qrToken, setQrToken] = useState<QRTokenResponse | null>(null);
+  const [loadingQR, setLoadingQR] = useState(false);
 
   useEffect(() => {
     const fetchCard = async () => {
       try {
         setLoading(true);
         const response = await apiService.getCustomerCards(customerId);
-        
+
         if (response.cards && response.cards.length > 0) {
           setCard(response.cards[0]);
         }
@@ -33,8 +36,23 @@ const HomeScreen = ({ customerId, customerName = 'Cliente' }: HomeScreenProps) =
     fetchCard();
   }, [customerId]);
 
-  const handleShowQR = () => {
-    console.log('Mostrar QR Code para cardId:', card?.cardId);
+  const handleShowQR = async () => {
+    if (!card) return;
+
+    try {
+      setLoadingQR(true);
+      const token = await apiService.getCardQR(card.cardId);
+      setQrToken(token);
+    } catch (err) {
+      console.error('Erro ao gerar QR Code:', err);
+      alert('Erro ao gerar QR Code. Tente novamente.');
+    } finally {
+      setLoadingQR(false);
+    }
+  };
+
+  const handleCloseQR = () => {
+    setQrToken(null);
   };
 
   if (loading) {
@@ -104,17 +122,18 @@ const HomeScreen = ({ customerId, customerName = 'Cliente' }: HomeScreenProps) =
         </div>
 
         <div className="actions">
-          <button className="btn-primary" onClick={handleShowQR}>
-            <svg className="btn-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="7" height="7"/>
-              <rect x="14" y="3" width="7" height="7"/>
-              <rect x="3" y="14" width="7" height="7"/>
-              <path d="M14 14h.01M14 17h.01M17 14h.01M17 17h.01M20 14h.01M20 17h.01M20 20h.01M17 20h.01M14 20h.01"/>
-            </svg>
-            Mostrar QR Code
+          <button
+            className="btn-primary"
+            onClick={handleShowQR}
+            disabled={loadingQR}
+          >
+            <span className="btn-icon">📱</span>
+            {loadingQR ? 'Gerando...' : 'Mostrar QR Code'}
           </button>
         </div>
       </main>
+
+      <QRCodeModal qrToken={qrToken} onClose={handleCloseQR} />
     </div>
   );
 };

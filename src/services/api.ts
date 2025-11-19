@@ -1,4 +1,4 @@
-import type { CustomerCardsResponse } from '../types';
+import type { CustomerCardsResponse, QRTokenResponse } from '../types';
 
 const API_BASE_URL = 'http://localhost:1234/api';
 
@@ -19,7 +19,7 @@ class ApiService {
     return response.json();
   }
 
-  async getCardQR(cardId: number): Promise<{ qrToken: string }> {
+  async getCardQR(cardId: number): Promise<QRTokenResponse> {
     const response = await fetch(`${this.baseUrl}/cards/${cardId}/qr`);
     
     if (!response.ok) {

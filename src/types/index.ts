@@ -13,3 +13,11 @@ export interface Card {
 export interface CustomerCardsResponse {
   cards: Card[];
 }
+
+export interface QRTokenResponse {
+  type: string;
+  idRef: number;
+  nonce: string;
+  exp: number;
+  sig: string;
+}
