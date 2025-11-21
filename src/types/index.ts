@@ -21,3 +21,23 @@ export interface QRTokenResponse {
   exp: number;
   sig: string;
 }
+
+export interface StampPayload {
+  cardId: number;
+  nonce: string;
+  exp: number;
+  sig: string;
+}
+
+export interface StampRequest {
+  type: string;
+  payload: StampPayload;
+}
+
+export interface StampResponse {
+  ok: boolean;
+  cardId: number;
+  stamps: number;
+  needed: number;
+  rewardIssued: boolean;
+}
