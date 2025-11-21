@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { apiService } from '../services/api';
 import './StaffScreen.css';
@@ -21,6 +21,7 @@ export default function StaffScreen() {
   const [result, setResult] = useState<StampResult | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [scanner, setScanner] = useState<Html5QrcodeScanner | null>(null);
+  const processingRef = useRef(false);
 
   useEffect(() => {
     if (scanning && !scanner) {
