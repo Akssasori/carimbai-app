@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import { apiService } from '../services/api';
 import './StaffScreen.css';
 
 interface StampResult {
@@ -86,28 +87,31 @@ export default function StaffScreen() {
 
   const applyStamp = async (qrData: any) => {
     try {
-      const response = await fetch('/api/stamp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('merchantToken')}`,
-          'Idempotency-Key': `${qrData.cardId}-${Date.now()}-${Math.random()}`,
+      const idempotencyKey = `${qrData.cardId}-${Date.now()}-${crypto.randomUUID()}`;
+      
+      const response = await apiService.applyStamp(
+        {
+          type: 'CUSTOMER_QR',
+          payload: qrData
         },
-        body: JSON.stringify(qrData),
+        idempotencyKey
+      );
+
+      setResult({
+        cardId: response.cardId.toString(),
+        stampsCount: response.stamps,
+        maxStamps: response.needed,
+        rewardEarned: response.rewardIssued,
+        timestamp: new Date().toISOString()
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erro ao aplicar carimbo');
-      }
-
-      const data: StampResult = await response.json();
-      setResult(data);
-
-      // Adiciona ao histórico
       const historyItem: HistoryItem = {
-        ...data,
-        id: `${data.cardId}-${Date.now()}`,
+        cardId: response.cardId.toString(),
+        stampsCount: response.stamps,
+        maxStamps: response.needed,
+        rewardEarned: response.rewardIssued,
+        timestamp: new Date().toISOString(),
+        id: `${response.cardId}-${Date.now()}`,
       };
       setHistory((prev) => [historyItem, ...prev]);
     } catch (err: any) {
