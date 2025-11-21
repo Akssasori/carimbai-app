@@ -20,11 +20,11 @@ export default function StaffScreen() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<StampResult | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [scanner, setScanner] = useState<Html5QrcodeScanner | null>(null);
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const processingRef = useRef(false);
 
   useEffect(() => {
-    if (scanning && !scanner) {
+    if (scanning && !scannerRef.current) {
       // Pequeno delay para garantir que o DOM foi atualizado
       setTimeout(() => {
         const qrScanner = new Html5QrcodeScanner(
@@ -37,17 +37,23 @@ export default function StaffScreen() {
           false
         );
 
+        scannerRef.current = qrScanner;
         qrScanner.render(onScanSuccess, onScanError);
-        setScanner(qrScanner);
       }, 100);
     }
 
-    // Cleanup quando o componente desmonta ou scanning muda
+    // Cleanup quando o componente desmonta ou quando `scanning` muda
     return () => {
-      if (scanner) {
-        scanner.clear().catch(console.error);
+      if (scannerRef.current) {
+        scannerRef.current
+          .clear()
+          .catch(console.error)
+          .finally(() => {
+            scannerRef.current = null;
+          });
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanning]);
 
   const startScanning = () => {
@@ -63,23 +69,26 @@ export default function StaffScreen() {
 
     try {
       const qrData = JSON.parse(decodedText);
-      
-      // Limpa o scanner
-      if (scanner) {
-        await scanner.clear();
-        setScanner(null);
+
+      // Limpa o scanner para parar novas leituras
+      if (scannerRef.current) {
+        await scannerRef.current.clear();
+        scannerRef.current = null;
       }
       setScanning(false);
 
       await applyStamp(qrData);
     } catch (err) {
+      console.error(err);
       setError('QR Code inválido. Não foi possível ler os dados.');
-      if (scanner) {
-        await scanner.clear();
-        setScanner(null);
+      if (scannerRef.current) {
+        await scannerRef.current.clear();
+        scannerRef.current = null;
       }
       setScanning(false);
     } finally {
+      // Se quiser permitir novo scan só depois de clicar em "Escanear novamente",
+      // você pode deixar como false aqui mesmo.
       processingRef.current = false;
     }
   };
@@ -91,27 +100,27 @@ export default function StaffScreen() {
 
   const applyStamp = async (qrData: any) => {
     try {
-    const idempotencyKey = `${qrData.idRef}-${Date.now()}-${crypto.randomUUID()}`;
-    
-    const response = await apiService.applyStamp(
-      {
-        type: 'CUSTOMER_QR',
-        payload: {
-          cardId: qrData.idRef,
-          nonce: qrData.nonce,
-          exp: qrData.exp,
-          sig: qrData.sig
-        }
-      },
-      idempotencyKey
-    );
+      const idempotencyKey = `${qrData.idRef}-${Date.now()}-${crypto.randomUUID()}`;
+
+      const response = await apiService.applyStamp(
+        {
+          type: 'CUSTOMER_QR',
+          payload: {
+            cardId: qrData.idRef,
+            nonce: qrData.nonce,
+            exp: qrData.exp,
+            sig: qrData.sig,
+          },
+        },
+        idempotencyKey
+      );
 
       setResult({
         cardId: response.cardId.toString(),
         stampsCount: response.stamps,
         maxStamps: response.needed,
         rewardEarned: response.rewardIssued,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       const historyItem: HistoryItem = {
@@ -124,14 +133,15 @@ export default function StaffScreen() {
       };
       setHistory((prev) => [historyItem, ...prev]);
     } catch (err: any) {
+      console.error(err);
       setError(err.message || 'Erro ao processar carimbo');
     }
   };
 
   const stopScanning = async () => {
-    if (scanner) {
-      await scanner.clear();
-      setScanner(null);
+    if (scannerRef.current) {
+      await scannerRef.current.clear();
+      scannerRef.current = null;
     }
     setScanning(false);
     processingRef.current = false;
