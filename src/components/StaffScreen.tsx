@@ -22,7 +22,6 @@ export default function StaffScreen() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [scanner, setScanner] = useState<Html5QrcodeScanner | null>(null);
 
-  // Inicializa o scanner quando scanning muda para true
   useEffect(() => {
     if (scanning && !scanner) {
       // Pequeno delay para garantir que o DOM foi atualizado
@@ -54,11 +53,14 @@ export default function StaffScreen() {
     setScanning(true);
     setError(null);
     setResult(null);
+    processingRef.current = false;
   };
 
   const onScanSuccess = async (decodedText: string) => {
+    if (processingRef.current) return;
+    processingRef.current = true;
+
     try {
-      // Parse o JSON do QR code
       const qrData = JSON.parse(decodedText);
       
       // Limpa o scanner
@@ -68,7 +70,6 @@ export default function StaffScreen() {
       }
       setScanning(false);
 
-      // Faz a requisição para aplicar o carimbo
       await applyStamp(qrData);
     } catch (err) {
       setError('QR Code inválido. Não foi possível ler os dados.');
@@ -77,6 +78,8 @@ export default function StaffScreen() {
         setScanner(null);
       }
       setScanning(false);
+    } finally {
+      processingRef.current = false;
     }
   };
 
@@ -86,7 +89,7 @@ export default function StaffScreen() {
   };
 
   const applyStamp = async (qrData: any) => {
-     try {
+    try {
     const idempotencyKey = `${qrData.idRef}-${Date.now()}-${crypto.randomUUID()}`;
     
     const response = await apiService.applyStamp(
@@ -130,6 +133,7 @@ export default function StaffScreen() {
       setScanner(null);
     }
     setScanning(false);
+    processingRef.current = false;
   };
 
   const clearHistory = () => {
