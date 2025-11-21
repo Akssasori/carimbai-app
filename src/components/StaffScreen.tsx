@@ -86,16 +86,21 @@ export default function StaffScreen() {
   };
 
   const applyStamp = async (qrData: any) => {
-    try {
-      const idempotencyKey = `${qrData.cardId}-${Date.now()}-${crypto.randomUUID()}`;
-      
-      const response = await apiService.applyStamp(
-        {
-          type: 'CUSTOMER_QR',
-          payload: qrData
-        },
-        idempotencyKey
-      );
+     try {
+    const idempotencyKey = `${qrData.idRef}-${Date.now()}-${crypto.randomUUID()}`;
+    
+    const response = await apiService.applyStamp(
+      {
+        type: 'CUSTOMER_QR',
+        payload: {
+          cardId: qrData.idRef,
+          nonce: qrData.nonce,
+          exp: qrData.exp,
+          sig: qrData.sig
+        }
+      },
+      idempotencyKey
+    );
 
       setResult({
         cardId: response.cardId.toString(),
