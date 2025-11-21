@@ -1,4 +1,4 @@
-import type { CustomerCardsResponse, QRTokenResponse } from '../types';
+import type { CustomerCardsResponse, QRTokenResponse, StampRequest, StampResponse } from '../types';
 
 const API_BASE_URL = 'http://localhost:1234/api';
 
@@ -24,6 +24,25 @@ class ApiService {
     
     if (!response.ok) {
       throw new Error(`Erro ao gerar QR Code: ${response.statusText}`);
+    }
+    
+    return response.json();
+  }
+
+  async applyStamp(stampRequest: StampRequest, idempotencyKey: string): Promise<StampResponse> {
+    const response = await fetch(`${this.baseUrl}/stamp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKey,
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(stampRequest),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Erro ao aplicar carimbo: ${response.status} - ${errorText}`);
     }
     
     return response.json();
