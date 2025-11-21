@@ -1,6 +1,6 @@
 import type { CustomerCardsResponse, QRTokenResponse, StampRequest, StampResponse } from '../types';
 
-const API_BASE_URL = 'http://localhost:1234/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||'http://localhost:1234/api';
 
 class ApiService {
   private baseUrl: string;
