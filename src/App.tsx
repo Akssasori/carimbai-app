@@ -26,7 +26,7 @@ function App() {
       {mode === 'customer' ? (
         <HomeScreen customerId={1} customerName="Lucas" />
       ) : (
-        <StaffScreen staffName="João" />
+        <StaffScreen />
       )}
     </div>
   )
