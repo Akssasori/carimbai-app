@@ -1,4 +1,4 @@
-import type { CustomerCardsResponse, QRTokenResponse, StampRequest, StampResponse } from '../types';
+import type { CustomerCardsResponse, QRTokenResponse, StampRequest, StampResponse, CustomerLoginRequest, CustomerLoginResponse } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||'http://localhost:1234/api';
 
@@ -7,6 +7,25 @@ class ApiService {
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
+  }
+
+  // 🔹 LOGIN LIGHT DO CLIENTE
+  async loginOrRegisterCustomer(payload: CustomerLoginRequest): Promise<CustomerLoginResponse> {
+    const response = await fetch(`${this.baseUrl}/customers/login-or-register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Erro ao autenticar cliente: ${response.status} - ${errorText}`);
+    }
+
+    return response.json();
   }
 
   async getCustomerCards(customerId: number): Promise<CustomerCardsResponse> {

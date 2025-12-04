@@ -41,3 +41,28 @@ export interface StampResponse {
   needed: number;
   rewardIssued: boolean;
 }
+
+export interface CustomerData {
+  customerId: number;
+  name?: string;
+  email?: string;
+  phone?: string;
+  providerId?: string;
+  created: boolean;
+}
+
+export interface CustomerLoginRequest {
+  name?: string;
+  email?: string;
+  phone?: string;
+  providerId?: string;
+}
+
+export interface CustomerLoginResponse {
+  customerId: number;
+  name?: string;
+  email?: string;
+  phone?: string;
+  providerId?: string;
+  created: boolean;
+}
