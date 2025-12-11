@@ -39,7 +39,7 @@ class ApiService {
   }
 
   async getCardQR(cardId: number): Promise<QRTokenResponse> {
-    const response = await fetch(`${this.baseUrl}/cards/${cardId}/qr`);
+    const response = await fetch(`${this.baseUrl}/qr/${cardId}`);
     
     if (!response.ok) {
       throw new Error(`Erro ao gerar QR Code: ${response.statusText}`);
