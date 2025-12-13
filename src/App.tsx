@@ -8,9 +8,11 @@ import './App.css';
 function App() {
   const [mode, setMode] = useState<'customer' | 'staff'>('customer');
   const { customer, loading, loginOrRegister } = useCustomer();
+  const [showModeSelector] = useState(false);
 
   return (
     <div className="app-container">
+      {showModeSelector && (
       <div className="mode-selector">
         <button
           className={`mode-btn ${mode === 'customer' ? 'active' : ''}`}
@@ -25,6 +27,7 @@ function App() {
           🏪 Lojista
         </button>
       </div>
+      )}
 
       {mode === 'customer' ? (
         <>
