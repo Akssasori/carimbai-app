@@ -1,4 +1,5 @@
 import QRCode from 'react-qr-code';
+import { useState, useEffect } from 'react';
 import type { QRTokenResponse } from '../types';
 import './QRCodeModal.css';
 
@@ -8,13 +9,25 @@ interface QRCodeModalProps {
 }
 
 const QRCodeModal = ({ qrToken, onClose }: QRCodeModalProps) => {
+
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   if (!qrToken) return null;
 
   const qrValue = JSON.stringify(qrToken);
-  
   const expiresAt = new Date(qrToken.exp * 1000);
-  const now = new Date();
-  const timeRemaining = Math.floor((expiresAt.getTime() - now.getTime()) / 1000 / 60);
+  const totalSeconds = Math.max(0, Math.floor((expiresAt.getTime() - currentTime.getTime()) / 1000));
+
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
 
   return (
     <div className="qr-modal-overlay" onClick={onClose}>
@@ -22,7 +35,7 @@ const QRCodeModal = ({ qrToken, onClose }: QRCodeModalProps) => {
         <button className="qr-modal-close" onClick={onClose}>×</button>
         
         <div className="qr-modal-header">
-          <h2>Seu QR Code</h2>
+          <h2>QR Code</h2>
           <p className="qr-subtitle">Mostre este código para o estabelecimento</p>
         </div>
 
@@ -41,8 +54,8 @@ const QRCodeModal = ({ qrToken, onClose }: QRCodeModalProps) => {
           <div className="qr-timer">
             <span className="timer-icon">⏱️</span>
             <span className="timer-text">
-              {timeRemaining > 0 
-                ? `Válido por ${timeRemaining} minutos` 
+              {totalSeconds > 0 
+                ? `Válido por ${minutes}:${seconds.toString().padStart(2, '0')}`
                 : 'Código expirado'}
             </span>
           </div>
