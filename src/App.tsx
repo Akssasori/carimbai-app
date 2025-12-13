@@ -8,7 +8,7 @@ import './App.css';
 function App() {
   const [mode, setMode] = useState<'customer' | 'staff'>('customer');
   const { customer, loading, loginOrRegister } = useCustomer();
-  const [showModeSelector, setShowModeSelector] = useState(false);
+  const [showModeSelector] = useState(false);
 
   return (
     <div className="app-container">
