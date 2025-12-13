@@ -13,6 +13,11 @@ export function CustomerOnboarding({ onSubmit }: Props) {
 
   const handleSubmit = async () => {
     setError('');
+
+    if (!validate()) {
+    return;
+    }
+
     setLoading(true);
     
     try {
@@ -23,6 +28,27 @@ export function CustomerOnboarding({ onSubmit }: Props) {
       setLoading(false);
     }
   };
+
+  const [errors, setErrors] = useState<{
+  name?: string;
+  email?: string;
+  phone?: string;
+  }>({});
+
+  const validate = () => {
+  const newErrors: typeof errors = {};
+
+  if (!email.trim()) {
+    newErrors.email = 'Email é obrigatório';
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    newErrors.email = 'Email inválido';
+  }
+
+  setErrors(newErrors);
+
+  // se não tiver erro, retorna true
+  return Object.keys(newErrors).length === 0;
+};
 
   return (
     <div style={{
@@ -107,7 +133,7 @@ export function CustomerOnboarding({ onSubmit }: Props) {
                 width: '100%',
                 padding: '16px 24px',
                 borderRadius: '16px',
-                border: '2px solid #e5e7eb',
+                border: `2px solid ${errors.email ? '#dc2626' : '#e5e7eb'}`,
                 fontSize: '16px',
                 outline: 'none',
                 transition: 'all 0.2s',
@@ -122,6 +148,12 @@ export function CustomerOnboarding({ onSubmit }: Props) {
                 e.target.style.boxShadow = 'none';
               }}
             />
+
+            {errors.email && (
+                <span style={{ color: '#dc2626', fontSize: '14px' }}>
+                  {errors.email}
+                </span>
+            )}
 
             {/* Phone Input */}
             <input
@@ -229,7 +261,7 @@ export function CustomerOnboarding({ onSubmit }: Props) {
           onMouseEnter={(e) => e.currentTarget.style.color = '#7c3aed'}
           onMouseLeave={(e) => e.currentTarget.style.color = '#9333ea'}
           >
-            Entrar com celular
+            Se não tiver login o login sera criado ao clicar em entrar
           </button>
         </div>
 
@@ -252,7 +284,7 @@ export function CustomerOnboarding({ onSubmit }: Props) {
           onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
           onMouseLeave={(e) => e.currentTarget.style.color = '#e9d5ff'}
           >
-            Esqueceu sua senha?
+            ...
           </button>
           
           <p style={{ 
@@ -260,7 +292,7 @@ export function CustomerOnboarding({ onSubmit }: Props) {
             fontSize: '16px',
             margin: 0
           }}>
-            <span style={{ color: '#c4b5fd' }}>Não</span> tem conta?{' '}
+            <span style={{ color: '#c4b5fd' }}>...</span> ...{' '}
             <button style={{
               background: 'transparent',
               border: 'none',
@@ -273,7 +305,7 @@ export function CustomerOnboarding({ onSubmit }: Props) {
             onMouseEnter={(e) => e.currentTarget.style.color = '#e9d5ff'}
             onMouseLeave={(e) => e.currentTarget.style.color = '#c084fc'}
             >
-              Cadastre-se
+              ...
             </button>
           </p>
         </div>
