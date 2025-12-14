@@ -15,13 +15,78 @@ interface HistoryItem extends StampResult {
   id: string;
 }
 
+interface StaffSession {
+  token: string;
+  staffId: number;
+  role: 'ADMIN' | 'CASHIER';
+  merchantId?: number;
+}
+
+const STAFF_STORAGE_KEY = 'carimbai_staff_session';
+
 export default function StaffScreen() {
+
+  const [session, setSession] = useState<StaffSession | null>(() => {
+    const raw = localStorage.getItem(STAFF_STORAGE_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as StaffSession;
+    } catch {
+      return null;
+    }
+  });
+
+  // estados do login
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  // estados do fluxo de carimbo
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<StampResult | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const processingRef = useRef(false);
+
+  // location da loja (pra Onda 1, você pode fixar ou deixar um campo)
+  const [locationId, setLocationId] = useState<number | ''>('');
+
+  // ==== LOGIN DO STAFF ====
+
+  async function handleLogin() {
+    setLoginError(null);
+    setLoginLoading(true);
+
+    try {
+      const res = await apiService.loginStaff(email, password);
+      const sess: StaffSession = {
+        token: res.token,
+        staffId: res.staffId,
+        role: res.role,
+        merchantId: res.merchantId,
+      };
+      setSession(sess);
+      localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(sess));
+    } catch (err: any) {
+      setLoginError(err.message ?? 'Erro ao fazer login');
+    } finally {
+      setLoginLoading(false);
+    }
+  }
+
+  function handleLogout() {
+    setSession(null);
+    localStorage.removeItem(STAFF_STORAGE_KEY);
+    setScanning(false);
+    if (scannerRef.current) {
+      scannerRef.current.clear().catch(console.error);
+      scannerRef.current = null;
+    }
+  }
+
+  // ==== SCANNER ====
 
   useEffect(() => {
     if (scanning && !scannerRef.current) {
@@ -63,6 +128,15 @@ export default function StaffScreen() {
     processingRef.current = false;
   };
 
+  const stopScanning = async () => {
+    if (scannerRef.current) {
+      await scannerRef.current.clear();
+      scannerRef.current = null;
+    }
+    setScanning(false);
+    processingRef.current = false;
+  };
+
   const onScanSuccess = async (decodedText: string) => {
     if (processingRef.current) return;
     processingRef.current = true;
@@ -100,6 +174,16 @@ export default function StaffScreen() {
 
   const applyStamp = async (qrData: any) => {
     try {
+      if (!session) {
+        setError('Faça login como lojista antes de aplicar carimbos.');
+        return;
+      }
+
+      if (!locationId) {
+        setError('Informe o ID da loja (Location) antes de carimbar.');
+        return;
+      }
+
       const idempotencyKey = `${qrData.idRef}-${Date.now()}-${crypto.randomUUID()}`;
 
       const response = await apiService.applyStamp(
@@ -112,39 +196,33 @@ export default function StaffScreen() {
             sig: qrData.sig,
           },
         },
-        idempotencyKey
+        idempotencyKey,
+        session.token,
+        Number(locationId)
       );
 
-      setResult({
+      const nowIso = new Date().toISOString();
+
+      const stampResult: StampResult = {
         cardId: response.cardId.toString(),
         stampsCount: response.stamps,
         maxStamps: response.needed,
         rewardEarned: response.rewardIssued,
-        timestamp: new Date().toISOString(),
-      });
+        timestamp: nowIso,
+      };
+
+      setResult(stampResult);
 
       const historyItem: HistoryItem = {
-        cardId: response.cardId.toString(),
-        stampsCount: response.stamps,
-        maxStamps: response.needed,
-        rewardEarned: response.rewardIssued,
-        timestamp: new Date().toISOString(),
+        ...stampResult,
         id: `${response.cardId}-${Date.now()}`,
       };
       setHistory((prev) => [historyItem, ...prev]);
+      setError(null);
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Erro ao processar carimbo');
     }
-  };
-
-  const stopScanning = async () => {
-    if (scannerRef.current) {
-      await scannerRef.current.clear();
-      scannerRef.current = null;
-    }
-    setScanning(false);
-    processingRef.current = false;
   };
 
   const clearHistory = () => {
@@ -155,16 +233,84 @@ export default function StaffScreen() {
     return new Date(timestamp).toLocaleString('pt-BR');
   };
 
+  // ==== UI ====
+
+  // 1) Se não tem sessão, mostra tela de login do staff
+  if (!session) {
+    return (
+      <div className="staff-screen">
+        <div className="staff-header">
+          <h1 className="greeting">Login do Comerciante</h1>
+          <p className="subtitle">Acesse para aplicar carimbos nos cartões dos clientes</p>
+        </div>
+
+        <div className="staff-content">
+          <div className="staff-login-card">
+            <label>
+              E-mail
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="lojista@exemplo.com"
+              />
+            </label>
+
+            <label>
+              Senha
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </label>
+
+            {loginError && <div className="error-message">{loginError}</div>}
+
+            <button
+              className="btn-scan"
+              onClick={handleLogin}
+              disabled={loginLoading}
+            >
+              {loginLoading ? 'Entrando...' : 'Entrar'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2) Se tem sessão, mostra seu painel atual (scanner + histórico)
   return (
     <div className="staff-screen">
       <div className="staff-header">
         <h1 className="greeting">Painel do Comerciante</h1>
         <p className="subtitle">Escaneie o QR Code do cliente para aplicar carimbos</p>
+
+        <div className="staff-info">
+          <span>Staff #{session.staffId} ({session.role})</span>
+          <button className="btn-clear-history" onClick={handleLogout}>
+            Sair
+          </button>
+        </div>
       </div>
 
       <div className="staff-content">
         <div className="scanner-section">
           <h2>Scanner de QR Code</h2>
+
+          <div className="location-input">
+            <label>
+              ID da loja (Location)
+              <input
+                type="number"
+                value={locationId}
+                onChange={e => setLocationId(e.target.value ? Number(e.target.value) : '')}
+                placeholder="1"
+              />
+            </label>
+          </div>
 
           {error && <div className="error-message">{error}</div>}
 
@@ -175,8 +321,8 @@ export default function StaffScreen() {
           ) : (
             <>
               <div id="qr-reader" style={{ width: '100%' }}></div>
-              <button 
-                className="btn-scan" 
+              <button
+                className="btn-scan"
                 onClick={stopScanning}
                 style={{ marginTop: '10px', background: '#dc3545' }}
               >
