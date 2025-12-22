@@ -32,7 +32,7 @@ class ApiService {
   }
 
   async loginStaff(email: string, password: string): Promise<StaffLoginResponse> {
-    const response = await fetch(`${this.baseUrl}/staff/login`, {
+    const response = await fetch(`${this.baseUrl}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
