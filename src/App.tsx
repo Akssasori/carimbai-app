@@ -1,64 +1,55 @@
-import { useState } from 'react';
 import HomeScreen from './components/HomeScreen';
 import StaffScreen from './components/StaffScreen';
 import { useCustomer } from './hooks/useCustomer';
 import { CustomerOnboarding } from './components/CustomerOnboarding';
 import './App.css';
+import { Route, Routes, Navigate } from 'react-router-dom';
+import StaffLogin from './components/StaffLogin';
 
 function App() {
-  const [mode, setMode] = useState<'customer' | 'staff'>('customer');
   const { customer, loading, loginOrRegister } = useCustomer();
-  const [showModeSelector] = useState(false);
 
   return (
     <div className="app-container">
-      {showModeSelector && (
-      <div className="mode-selector">
-        <button
-          className={`mode-btn ${mode === 'customer' ? 'active' : ''}`}
-          onClick={() => setMode('customer')}
-        >
-          👤 Cliente
-        </button>
-        <button
-          className={`mode-btn ${mode === 'staff' ? 'active' : ''}`}
-          onClick={() => setMode('staff')}
-        >
-          🏪 Lojista
-        </button>
-      </div>
-      )}
+      <Routes>
+        {/* Rota padrão: fluxo do cliente */}
+        <Route
+          path="/"
+          element={
+            <>
+              {loading && <div>Carregando...</div>}
 
-      {mode === 'customer' ? (
-        <>
-          {loading && <div>Carregando...</div>}
+              {!loading && !customer && (
+                <CustomerOnboarding
+                  onSubmit={async ({ name, email, phone }) => {
+                    await loginOrRegister({
+                      name,
+                      email,
+                      phone,
+                      providerId: undefined, // depois você pode trocar por um UUID do device
+                    });
+                    // o hook atualiza `customer` e a HomeScreen aparece sozinha
+                  }}
+                />
+              )}
 
-          {!loading && !customer && (
-            <CustomerOnboarding
-              onSubmit={async ({ name, email, phone }) => {
-                await loginOrRegister({
-                  name,
-                  email,
-                  phone,
-                  providerId: undefined, // depois você pode trocar por um UUID do device
-                });
-                // não precisa "redirecionar":
-                // o useCustomer vai atualizar `customer`
-                // e o App vai passar a renderizar a HomeScreen automaticamente
-              }}
-            />
-          )}
+              {!loading && customer && (
+                <HomeScreen
+                  customerId={customer.customerId}
+                  customerName={customer.name ?? 'Cliente'}
+                />
+              )}
+            </>
+          }
+        />
 
-          {!loading && customer && (
-            <HomeScreen
-              customerId={customer.customerId}
-              customerName={customer.name ?? 'Cliente'}
-            />
-          )}
-        </>
-      ) : (
-        <StaffScreen />
-      )}
+        {/* Rota especial do lojista */}
+        <Route path="/staff" element={<StaffLogin />} />
+        <Route path="/staff/dashboard" element={<StaffScreen />} />
+
+        {/* Qualquer outra URL redireciona pra home do cliente */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
   );
 }

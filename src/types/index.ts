@@ -30,7 +30,7 @@ export interface StampPayload {
 }
 
 export interface StampRequest {
-  type: string;
+  type: 'CUSTOMER_QR' | 'STORE_QR';
   payload: StampPayload;
 }
 
@@ -65,4 +65,23 @@ export interface CustomerLoginResponse {
   phone?: string;
   providerId?: string;
   created: boolean;
+}
+
+export interface StaffLoginResponse {
+  token: string;
+  staffId: number;
+  role: 'ADMIN' | 'CASHIER';
+  merchantId?: number;
+}
+
+export interface RedeemRequest {
+  cardId: number;
+  locationId?: number;
+}
+
+export interface RedeemResponse {
+  ok: boolean;
+  rewardId: number | null;
+  cardId: number | null;
+  stampsAfter: number;
 }

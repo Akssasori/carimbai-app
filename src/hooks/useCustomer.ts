@@ -32,6 +32,7 @@ export function useCustomer() {
   // login ou cadastro (login light)
   async function loginOrRegister(payload: CustomerLoginRequest): Promise<CustomerLoginResponse> {
     const res = await apiService.loginOrRegisterCustomer(payload);
+    console.log('login response', res);
     setCustomer(res);
 
     if (typeof window !== 'undefined') {

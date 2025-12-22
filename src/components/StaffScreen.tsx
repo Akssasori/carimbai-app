@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { apiService } from '../services/api';
 import './StaffScreen.css';
@@ -15,17 +16,56 @@ interface HistoryItem extends StampResult {
   id: string;
 }
 
+interface StaffSession {
+  token: string;
+  staffId: number;
+  role: 'ADMIN' | 'CASHIER';
+  merchantId?: number;
+}
+
+const STAFF_STORAGE_KEY = 'carimbai_staff_session';
+
 export default function StaffScreen() {
+  const navigate = useNavigate();
+
+  const [session, setSession] = useState<StaffSession | null>(() => {
+    const raw = localStorage.getItem(STAFF_STORAGE_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as StaffSession;
+    } catch {
+      return null;
+    }
+  });
+
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<StampResult | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const processingRef = useRef(false);
+  const [locationId, setLocationId] = useState<number | ''>('');
+  const [activeNav, setActiveNav] = useState('scan');
+
+  useEffect(() => {
+    if (!session) {
+      navigate('/staff', { replace: true });
+    }
+  }, [session, navigate]);
+
+  function handleLogout() {
+    setSession(null);
+    localStorage.removeItem(STAFF_STORAGE_KEY);
+    setScanning(false);
+    if (scannerRef.current) {
+      scannerRef.current.clear().catch(console.error);
+      scannerRef.current = null;
+    }
+    navigate('/staff', { replace: true });
+  }
 
   useEffect(() => {
     if (scanning && !scannerRef.current) {
-      // Pequeno delay para garantir que o DOM foi atualizado
       setTimeout(() => {
         const qrScanner = new Html5QrcodeScanner(
           'qr-reader',
@@ -36,24 +76,17 @@ export default function StaffScreen() {
           },
           false
         );
-
         scannerRef.current = qrScanner;
         qrScanner.render(onScanSuccess, onScanError);
       }, 100);
     }
-
-    // Cleanup quando o componente desmonta ou quando `scanning` muda
     return () => {
       if (scannerRef.current) {
-        scannerRef.current
-          .clear()
-          .catch(console.error)
-          .finally(() => {
-            scannerRef.current = null;
-          });
+        scannerRef.current.clear().catch(console.error).finally(() => {
+          scannerRef.current = null;
+        });
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanning]);
 
   const startScanning = () => {
@@ -61,81 +94,6 @@ export default function StaffScreen() {
     setError(null);
     setResult(null);
     processingRef.current = false;
-  };
-
-  const onScanSuccess = async (decodedText: string) => {
-    if (processingRef.current) return;
-    processingRef.current = true;
-
-    try {
-      const qrData = JSON.parse(decodedText);
-
-      // Limpa o scanner para parar novas leituras
-      if (scannerRef.current) {
-        await scannerRef.current.clear();
-        scannerRef.current = null;
-      }
-      setScanning(false);
-
-      await applyStamp(qrData);
-    } catch (err) {
-      console.error(err);
-      setError('QR Code inválido. Não foi possível ler os dados.');
-      if (scannerRef.current) {
-        await scannerRef.current.clear();
-        scannerRef.current = null;
-      }
-      setScanning(false);
-    } finally {
-      // Se quiser permitir novo scan só depois de clicar em "Escanear novamente",
-      // você pode deixar como false aqui mesmo.
-      processingRef.current = false;
-    }
-  };
-
-  const onScanError = (errorMessage: string) => {
-    // Ignora erros de scan contínuo
-    console.warn(errorMessage);
-  };
-
-  const applyStamp = async (qrData: any) => {
-    try {
-      const idempotencyKey = `${qrData.idRef}-${Date.now()}-${crypto.randomUUID()}`;
-
-      const response = await apiService.applyStamp(
-        {
-          type: 'CUSTOMER_QR',
-          payload: {
-            cardId: qrData.idRef,
-            nonce: qrData.nonce,
-            exp: qrData.exp,
-            sig: qrData.sig,
-          },
-        },
-        idempotencyKey
-      );
-
-      setResult({
-        cardId: response.cardId.toString(),
-        stampsCount: response.stamps,
-        maxStamps: response.needed,
-        rewardEarned: response.rewardIssued,
-        timestamp: new Date().toISOString(),
-      });
-
-      const historyItem: HistoryItem = {
-        cardId: response.cardId.toString(),
-        stampsCount: response.stamps,
-        maxStamps: response.needed,
-        rewardEarned: response.rewardIssued,
-        timestamp: new Date().toISOString(),
-        id: `${response.cardId}-${Date.now()}`,
-      };
-      setHistory((prev) => [historyItem, ...prev]);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Erro ao processar carimbo');
-    }
   };
 
   const stopScanning = async () => {
@@ -147,112 +105,251 @@ export default function StaffScreen() {
     processingRef.current = false;
   };
 
-  const clearHistory = () => {
-    setHistory([]);
+  const onScanSuccess = async (decodedText: string) => {
+    if (processingRef.current) return;
+    processingRef.current = true;
+    try {
+      const qrData = JSON.parse(decodedText);
+      if (scannerRef.current) {
+        await scannerRef.current.clear();
+        scannerRef.current = null;
+      }
+      setScanning(false);
+      await applyStamp(qrData);
+    } catch (err) {
+      console.error(err);
+      setError('QR Code inválido. Não foi possível ler os dados.');
+      if (scannerRef.current) {
+        await scannerRef.current.clear();
+        scannerRef.current = null;
+      }
+      setScanning(false);
+    } finally {
+      processingRef.current = false;
+    }
+  };
+
+  const onScanError = (errorMessage: string) => {
+    console.warn(errorMessage);
+  };
+
+  const applyStamp = async (qrData: any) => {
+    try {
+      if (!session) {
+        setError('Faça login como lojista antes de aplicar carimbos.');
+        return;
+      }
+      if (!locationId) {
+        setError('Informe o ID da loja (Location) antes de carimbar.');
+        return;
+      }
+      const idempotencyKey = `${qrData.idRef}-${Date.now()}-${crypto.randomUUID()}`;
+      const response = await apiService.applyStamp(
+        {
+          type: 'CUSTOMER_QR',
+          payload: {
+            cardId: qrData.idRef,
+            nonce: qrData.nonce,
+            exp: qrData.exp,
+            sig: qrData.sig,
+          },
+        },
+        idempotencyKey,
+        session.token,
+        Number(locationId)
+      );
+      const nowIso = new Date().toISOString();
+      const stampResult: StampResult = {
+        cardId: response.cardId.toString(),
+        stampsCount: response.stamps,
+        maxStamps: response.needed,
+        rewardEarned: response.rewardIssued,
+        timestamp: nowIso,
+      };
+      setResult(stampResult);
+      const historyItem: HistoryItem = {
+        ...stampResult,
+        id: `${response.cardId}-${Date.now()}`,
+      };
+      setHistory((prev) => [historyItem, ...prev]);
+      setError(null);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Erro ao processar carimbo');
+    }
   };
 
   const formatTimestamp = (timestamp: string) => {
     return new Date(timestamp).toLocaleString('pt-BR');
   };
 
+  const todayStamps = history.filter(h => {
+    const today = new Date().toDateString();
+    return new Date(h.timestamp).toDateString() === today;
+  }).length;
+
+  const todayRewards = history.filter(h => {
+    const today = new Date().toDateString();
+    return new Date(h.timestamp).toDateString() === today && h.rewardEarned;
+  }).length;
+
+  if (!session) {
+    return null;
+  }
+
   return (
-    <div className="staff-screen">
-      <div className="staff-header">
-        <h1 className="greeting">Painel do Comerciante</h1>
-        <p className="subtitle">Escaneie o QR Code do cliente para aplicar carimbos</p>
-      </div>
-
-      <div className="staff-content">
-        <div className="scanner-section">
-          <h2>Scanner de QR Code</h2>
-
-          {error && <div className="error-message">{error}</div>}
-
-          {!scanning ? (
-            <button className="btn-scan" onClick={startScanning}>
-              📷 Escanear QR Code
-            </button>
-          ) : (
-            <>
-              <div id="qr-reader" style={{ width: '100%' }}></div>
-              <button 
-                className="btn-scan" 
-                onClick={stopScanning}
-                style={{ marginTop: '10px', background: '#dc3545' }}
-              >
-                ❌ Cancelar
-              </button>
-            </>
-          )}
-
-          {result && (
-            <div className={`result-card ${result.rewardEarned ? 'with-reward' : ''}`}>
-              <div className="result-header">
-                <h3>✅ Carimbo Aplicado</h3>
-                <span className="result-time">{formatTimestamp(result.timestamp)}</span>
-              </div>
-              <div className="result-details">
-                <div className="detail-row">
-                  <span className="label">Cartão:</span>
-                  <span className="value">{result.cardId}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Carimbos:</span>
-                  <span className="value">
-                    {result.stampsCount} / {result.maxStamps}
-                  </span>
-                </div>
-                <div className="progress-bar-small">
-                  <div
-                    className="progress-fill-small"
-                    style={{ width: `${(result.stampsCount / result.maxStamps) * 100}%` }}
-                  ></div>
-                </div>
-                {result.rewardEarned && (
-                  <div className="reward-badge">
-                    <span className="reward-icon">🎉</span>
-                    <span>Prêmio Conquistado!</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+    <div className="staff-layout">
+      <aside className="sidebar">
+        <div className="sidebar-logo">
+          <span className="logo-icon">🎯</span>
         </div>
+        <nav className="sidebar-nav">
+          <button className={`nav-item ${activeNav === 'home' ? 'active' : ''}`} onClick={() => setActiveNav('home')}>
+            <span className="nav-icon">🏠</span>
+          </button>
+          <button className={`nav-item ${activeNav === 'scan' ? 'active' : ''}`} onClick={() => setActiveNav('scan')}>
+            <span className="nav-icon">📷</span>
+          </button>
+          <button className={`nav-item ${activeNav === 'users' ? 'active' : ''}`} onClick={() => setActiveNav('users')}>
+            <span className="nav-icon">👥</span>
+          </button>
+          <button className={`nav-item ${activeNav === 'settings' ? 'active' : ''}`} onClick={() => setActiveNav('settings')}>
+            <span className="nav-icon">⚙️</span>
+          </button>
+        </nav>
+        <div className="sidebar-bottom">
+          <button className="nav-item" onClick={handleLogout}>
+            <span className="nav-icon">🚪</span>
+          </button>
+        </div>
+      </aside>
 
-        <div className="history-section">
-          <div className="history-header">
-            <h2>Histórico</h2>
-            {history.length > 0 && (
-              <button className="btn-clear-history" onClick={clearHistory}>
-                Limpar
-              </button>
-            )}
+      <main className="main-content">
+        <header className="top-header">
+          <div className="header-left">
+            <h1>Painel do Staff</h1>
+            <span className="header-subtitle">Staff #{session.staffId} • {session.role}</span>
           </div>
+          <div className="header-right">
+            <div className="location-select">
+              <label>Loja ID:</label>
+              <input
+                type="number"
+                value={locationId}
+                onChange={e => setLocationId(e.target.value ? Number(e.target.value) : '')}
+                placeholder="1"
+              />
+            </div>
+            <button className="btn-logout" onClick={handleLogout}>Sair</button>
+          </div>
+        </header>
 
-          {history.length === 0 ? (
-            <div className="empty-history">
-              <p>Nenhum carimbo aplicado ainda</p>
+        <div className="stats-row">
+          <div className="stat-card">
+            <div className="stat-icon blue">📋</div>
+            <div className="stat-info">
+              <span className="stat-value">{todayStamps}</span>
+              <span className="stat-label">Carimbos Hoje</span>
             </div>
-          ) : (
-            <div className="history-list">
-              {history.map((item) => (
-                <div key={item.id} className="history-item">
-                  <div className="history-item-header">
-                    <span className="card-id">{item.cardId}</span>
-                    <span className="timestamp">{formatTimestamp(item.timestamp)}</span>
-                  </div>
-                  <div className="history-item-stats">
-                    <span className="stamps-info">
-                      {item.stampsCount}/{item.maxStamps} carimbos
-                    </span>
-                    {item.rewardEarned && <span className="reward-indicator">🎁</span>}
-                  </div>
-                </div>
-              ))}
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon orange">🎁</div>
+            <div className="stat-info">
+              <span className="stat-value">{todayRewards}</span>
+              <span className="stat-label">Prêmios Hoje</span>
             </div>
-          )}
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon green">👤</div>
+            <div className="stat-info">
+              <span className="stat-value">{new Set(history.map(h => h.cardId)).size}</span>
+              <span className="stat-label">Total Clientes</span>
+            </div>
+          </div>
         </div>
-      </div>
+
+        <div className="content-grid">
+          <section className="scanner-card">
+            <h2>Escanear QR Code</h2>
+            <p className="scanner-desc">Aponte a câmera para o QR Code do cliente</p>
+
+            {error && <div className="error-message">{error}</div>}
+
+            {!scanning ? (
+              <div className="scanner-placeholder" onClick={startScanning}>
+                <div className="qr-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                    <rect x="14" y="14" width="3" height="3" />
+                    <rect x="18" y="14" width="3" height="3" />
+                    <rect x="14" y="18" width="3" height="3" />
+                    <rect x="18" y="18" width="3" height="3" />
+                  </svg>
+                </div>
+                <span>Clique para escanear</span>
+              </div>
+            ) : (
+              <div className="scanner-active">
+                <div id="qr-reader"></div>
+                <button className="btn-cancel" onClick={stopScanning}>Cancelar</button>
+              </div>
+            )}
+
+            {result && (
+              <div className={`result-card ${result.rewardEarned ? 'with-reward' : ''}`}>
+                <div className="result-header">
+                  <span className="result-status">✅ Carimbo Aplicado</span>
+                  <span className="result-time">{formatTimestamp(result.timestamp)}</span>
+                </div>
+                <div className="result-body">
+                  <div className="result-row">
+                    <span>Cartão</span>
+                    <strong>{result.cardId}</strong>
+                  </div>
+                  <div className="result-row">
+                    <span>Progresso</span>
+                    <strong>{result.stampsCount}/{result.maxStamps}</strong>
+                  </div>
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${(result.stampsCount / result.maxStamps) * 100}%` }}></div>
+                  </div>
+                  {result.rewardEarned && (
+                    <div className="reward-alert">🎉 Prêmio Conquistado!</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="activity-card">
+            <div className="activity-header">
+              <h2>Atividade Recente</h2>
+              <span className="activity-count">{history.length} registros</span>
+            </div>
+            <div className="activity-list">
+              {history.length === 0 ? (
+                <div className="empty-state">
+                  <span>📭</span>
+                  <p>Nenhuma atividade ainda</p>
+                </div>
+              ) : (
+                history.slice(0, 10).map((item) => (
+                  <div key={item.id} className="activity-item">
+                    <div className="activity-icon">{item.rewardEarned ? '🎁' : '✓'}</div>
+                    <div className="activity-info">
+                      <span className="activity-title">Cartão #{item.cardId}</span>
+                      <span className="activity-meta">{item.stampsCount}/{item.maxStamps} carimbos</span>
+                    </div>
+                    <span className="activity-time">{formatTimestamp(item.timestamp)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+        </div>
+      </main>
     </div>
   );
 }
