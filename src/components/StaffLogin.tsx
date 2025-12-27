@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
+import React from 'react';
 
 const STAFF_STORAGE_KEY = 'carimbai_staff_session';
 
@@ -17,7 +18,9 @@ export default function StaffLogin() {
       try {
         JSON.parse(raw);
         navigate('/staff/dashboard', { replace: true });
-      } catch {}
+      } catch {
+        setError('Failed to parse staff data from local storage');
+      }
     }
   }, [navigate]);
 
@@ -51,7 +54,8 @@ export default function StaffLogin() {
     }
   };
 
-  const styles = {
+  // Adicione a tipagem aqui:
+  const styles: { [key: string]: React.CSSProperties } = {
     container: {
       minHeight: '100vh',
       display: 'flex',
@@ -237,12 +241,12 @@ export default function StaffLogin() {
                   onClick={handleForgotPassword}
                   style={styles.link}
                   onMouseEnter={(e) => {
-                    e.target.style.color = '#7c3aed';
-                    e.target.style.textDecoration = 'underline';
+                     e.currentTarget.style.color = '#7c3aed';
+                     e.currentTarget.style.textDecoration = 'underline';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.color = '#6b7280';
-                    e.target.style.textDecoration = 'none';
+                    e.currentTarget.style.color = '#6b7280';
+                    e.currentTarget.style.textDecoration = 'none';
                   }}
                 >
                   Esqueceu a senha? Clique aqui para recuperar.
