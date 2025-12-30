@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import "./HomeScreen.css";
+import "./CustomerScreen.css";
 import type { Card, QRTokenResponse } from "../types";
 import { apiService } from "../services/api";
 import QRCodeModal from "./QRCodeModal";

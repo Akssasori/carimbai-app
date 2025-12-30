@@ -1,7 +1,7 @@
-import HomeScreen from './components/HomeScreen';
+import HomeScreen from './components/CustomerScreen';
 import StaffScreen from './components/StaffScreen';
 import { useCustomer } from './hooks/useCustomer';
-import { CustomerOnboarding } from './components/CustomerOnboarding';
+import { CustomerOnboarding } from './components/CustomerLogin';
 import './App.css';
 import { Route, Routes, Navigate } from 'react-router-dom';
 import StaffLogin from './components/StaffLogin';

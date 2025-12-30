@@ -85,3 +85,10 @@ export interface RedeemResponse {
   cardId: number | null;
   stampsAfter: number;
 }
+
+export interface QRCodeData {
+  idRef: number;
+  nonce: string;
+  exp: number;
+  sig: string;
+}
