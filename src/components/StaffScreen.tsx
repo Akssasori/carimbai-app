@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { apiService } from '../services/api';
 import './StaffScreen.css';
+import type { QRCodeData } from '../types';
 
 interface StampResult {
   cardId: string;
@@ -133,7 +134,7 @@ export default function StaffScreen() {
     console.warn(errorMessage);
   };
 
-  const applyStamp = async (qrData: any) => {
+  const applyStamp = async (qrData: QRCodeData) => {
     try {
       if (!session) {
         setError('Faça login como lojista antes de aplicar carimbos.');
@@ -173,9 +174,9 @@ export default function StaffScreen() {
       };
       setHistory((prev) => [historyItem, ...prev]);
       setError(null);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Erro ao processar carimbo');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao processar carimbo';
+      setError(message);
     }
   };
 

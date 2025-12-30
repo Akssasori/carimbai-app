@@ -22,8 +22,9 @@ export function CustomerOnboarding({ onSubmit }: Props) {
     
     try {
       await onSubmit({ name, email, phone });
-    } catch (err: any) {
-      setError(err.message ?? 'Erro ao salvar seus dados');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao salvar seus dados';
+      setError(message);
     } finally {
       setLoading(false);
     }

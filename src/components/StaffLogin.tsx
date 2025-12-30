@@ -37,8 +37,9 @@ export default function StaffLogin() {
       };
       localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(session));
       navigate('/staff/dashboard', { replace: true });
-    } catch (err: any) {
-      setError(err.message ?? 'Erro ao fazer login');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao fazer login';
+      setError(message);
     } finally {
       setLoading(false);
     }
