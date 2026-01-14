@@ -140,10 +140,10 @@ export default function StaffScreen() {
         setError('Faça login como lojista antes de aplicar carimbos.');
         return;
       }
-      if (!locationId) {
-        setError('Informe o ID da loja (Location) antes de carimbar.');
-        return;
-      }
+      // if (!locationId) {
+      //   setError('Informe o ID da loja (Location) antes de carimbar.');
+      //   return;
+      // }
       const idempotencyKey = `${qrData.idRef}-${Date.now()}-${crypto.randomUUID()}`;
       const response = await apiService.applyStamp(
         {
