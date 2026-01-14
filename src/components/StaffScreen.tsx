@@ -141,6 +141,8 @@ export default function StaffScreen() {
         return;
       }
 
+      console.log('Location ID before validation:', locationId);
+
       // valida locationId
       const trimmed = locationId.trim();
       const parsedLocationId = Number(trimmed);
@@ -151,7 +153,6 @@ export default function StaffScreen() {
       }
 
       console.log('Applying stamp with locationId:', parsedLocationId);
-      // console.log('Applying stamp with locationId:', 1);
 
       const idempotencyKey = `${qrData.idRef}-${Date.now()}-${crypto.randomUUID()}`;
       const response = await apiService.applyStamp(
@@ -166,8 +167,8 @@ export default function StaffScreen() {
         },
         idempotencyKey,
         session.token,
-        // 1
-        parsedLocationId
+        1
+        // parsedLocationId
       );
       
       const nowIso = new Date().toISOString();
