@@ -18,26 +18,48 @@ const HomeScreen = ({
   const [error, setError] = useState<string | null>(null);
   const [qrToken, setQrToken] = useState<QRTokenResponse | null>(null);
   const [loadingQR, setLoadingQR] = useState(false);
+  const [previousStampsCount, setPreviousStampsCount] = useState<number>(0);
 
-  useEffect(() => {
-    const fetchCard = async () => {
-      try {
-        setLoading(true);
-        const response = await apiService.getCustomerCards(customerId);
+  const fetchCard = async (isPolling = false) => {
+    try {
+      if (!isPolling) setLoading(true);
+      const response = await apiService.getCustomerCards(customerId);
 
-        if (response.cards && response.cards.length > 0) {
-          setCard(response.cards[0]);
+      if (response.cards && response.cards.length > 0) {
+        const newCard = response.cards[0];
+        
+        // Se está fazendo polling e detectou novo carimbo
+        if (isPolling && qrToken && previousStampsCount > 0 && newCard.stampsCount > previousStampsCount) {
+          setQrToken(null); // Fecha o modal
         }
-      } catch (err) {
+        
+        setCard(newCard);
+        setPreviousStampsCount(newCard.stampsCount);
+      }
+    } catch (err) {
+      if (!isPolling) {
         setError("Erro ao carregar cartão de fidelidade");
         console.error(err);
-      } finally {
-        setLoading(false);
       }
-    };
+    } finally {
+      if (!isPolling) setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchCard();
   }, [customerId]);
+
+  // Polling quando o QR Code está aberto
+  useEffect(() => {
+    if (!qrToken) return;
+
+    const intervalId = setInterval(() => {
+      fetchCard(true);
+    }, 2000); // Verifica a cada 2 segundos
+
+    return () => clearInterval(intervalId);
+  }, [qrToken, customerId, previousStampsCount]);
 
   const handleShowQR = async () => {
     if (!card) return;
