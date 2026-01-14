@@ -142,15 +142,16 @@ export default function StaffScreen() {
       }
 
       // valida locationId
-      const trimmed = locationId.trim();
-      const parsedLocationId = Number(trimmed);
+      // const trimmed = locationId.trim();
+      // const parsedLocationId = Number(trimmed);
 
-      if (!trimmed || Number.isNaN(parsedLocationId) || parsedLocationId <= 0) {
-        setError('Informe um ID de loja (Location) válido antes de carimbar.');
-        return;
-      }
+      // if (!trimmed || Number.isNaN(parsedLocationId) || parsedLocationId <= 0) {
+      //   setError('Informe um ID de loja (Location) válido antes de carimbar.');
+      //   return;
+      // }
 
-      console.log('Applying stamp with locationId:', parsedLocationId);
+      // console.log('Applying stamp with locationId:', parsedLocationId);
+      console.log('Applying stamp with locationId:', 1);
 
       const idempotencyKey = `${qrData.idRef}-${Date.now()}-${crypto.randomUUID()}`;
       const response = await apiService.applyStamp(
@@ -165,7 +166,8 @@ export default function StaffScreen() {
         },
         idempotencyKey,
         session.token,
-        parsedLocationId
+        1
+        // parsedLocationId
       );
       
       const nowIso = new Date().toISOString();
