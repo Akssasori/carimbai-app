@@ -104,10 +104,14 @@ class ApiService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    console.log('****Location ID: *****', locationId);
+
     if (locationId != null) {
     headers['X-Location-Id'] = String(locationId);
     }
 
+    headers['X-Location-Id-TESTE'] = String(2);
+    
     const response = await fetch(`${this.baseUrl}/stamp`, {
       method: 'POST',
       headers,

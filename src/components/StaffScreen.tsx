@@ -45,7 +45,7 @@ export default function StaffScreen() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const processingRef = useRef(false);
-  const [locationId, setLocationId] = useState<number | ''>('');
+  const [locationId, setLocationId] = useState<string>('');
   const [activeNav, setActiveNav] = useState('scan');
 
   useEffect(() => {
@@ -140,10 +140,19 @@ export default function StaffScreen() {
         setError('Faça login como lojista antes de aplicar carimbos.');
         return;
       }
-      // if (!locationId) {
-      //   setError('Informe o ID da loja (Location) antes de carimbar.');
+
+      // valida locationId
+      // const trimmed = locationId.trim();
+      // const parsedLocationId = Number(trimmed);
+
+      // if (!trimmed || Number.isNaN(parsedLocationId) || parsedLocationId <= 0) {
+      //   setError('Informe um ID de loja (Location) válido antes de carimbar.');
       //   return;
       // }
+
+      // console.log('Applying stamp with locationId:', parsedLocationId);
+      console.log('Applying stamp with locationId:', 1);
+
       const idempotencyKey = `${qrData.idRef}-${Date.now()}-${crypto.randomUUID()}`;
       const response = await apiService.applyStamp(
         {
@@ -157,8 +166,10 @@ export default function StaffScreen() {
         },
         idempotencyKey,
         session.token,
-        Number(locationId)
+        1
+        // parsedLocationId
       );
+      
       const nowIso = new Date().toISOString();
       const stampResult: StampResult = {
         cardId: response.cardId.toString(),
@@ -237,7 +248,7 @@ export default function StaffScreen() {
               <input
                 type="number"
                 value={locationId}
-                onChange={e => setLocationId(e.target.value ? Number(e.target.value) : '')}
+                onChange={e => setLocationId(e.target.value)}
                 placeholder="1"
               />
             </div>
