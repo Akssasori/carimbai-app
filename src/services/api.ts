@@ -110,8 +110,6 @@ class ApiService {
     headers['X-Location-Id'] = String(locationId);
     }
 
-    headers['X-Location-Id-TESTE'] = String(2);
-    
     const response = await fetch(`${this.baseUrl}/stamp`, {
       method: 'POST',
       headers,
