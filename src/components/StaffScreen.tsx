@@ -45,7 +45,7 @@ export default function StaffScreen() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const processingRef = useRef(false);
-  const [locationId, setLocationId] = useState<string>('');
+  const [locationId, setLocationId] = useState<string>('1');
   const [activeNav, setActiveNav] = useState('scan');
 
   useEffect(() => {
@@ -167,8 +167,7 @@ export default function StaffScreen() {
         },
         idempotencyKey,
         session.token,
-        1
-        // parsedLocationId
+        parsedLocationId
       );
       
       const nowIso = new Date().toISOString();
