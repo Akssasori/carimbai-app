@@ -1,4 +1,4 @@
-import type { CustomerCardsResponse, QRTokenResponse, StampRequest, StampResponse, CustomerLoginRequest, CustomerLoginResponse, StaffLoginResponse, RedeemRequest, RedeemResponse } from '../types';
+import type { CustomerCardsResponse, QRTokenResponse, StampRequest, StampResponse, CustomerLoginRequest, CustomerLoginResponse, StaffLoginResponse, RedeemRequest, RedeemResponse, RedeemQrTokenResponse, RedeemQrRequest } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||'http://localhost:1234/api';
 
@@ -119,6 +119,46 @@ class ApiService {
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Erro ao aplicar carimbo: ${response.status} - ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  async getRedeemQR(cardId: number): Promise<RedeemQrTokenResponse> {
+    const response = await fetch(`${this.baseUrl}/cards/${cardId}/redeem-qr`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Erro ao gerar QR de resgate: ${response.status} - ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  async redeemWithQr(
+    request: RedeemQrRequest,
+    token: string,
+    cashierPin?: string
+  ): Promise<RedeemResponse> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    };
+
+    if (cashierPin) {
+      headers['X-Cashier-Pin'] = cashierPin;
+    }
+
+    const response = await fetch(`${this.baseUrl}/redeem`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Erro ao resgatar recompensa: ${response.status} - ${errorText}`);
     }
 
     return response.json();

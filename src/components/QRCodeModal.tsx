@@ -1,14 +1,15 @@
 import QRCode from 'react-qr-code';
 import { useState, useEffect } from 'react';
-import type { QRTokenResponse } from '../types';
+import type { QRTokenResponse, RedeemQrTokenResponse } from '../types';
 import './QRCodeModal.css';
 
 interface QRCodeModalProps {
   qrToken: QRTokenResponse | null;
+  redeemQrToken?: RedeemQrTokenResponse | null;
   onClose: () => void;
 }
 
-const QRCodeModal = ({ qrToken, onClose }: QRCodeModalProps) => {
+const QRCodeModal = ({ qrToken, redeemQrToken, onClose }: QRCodeModalProps) => {
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -20,10 +21,24 @@ const QRCodeModal = ({ qrToken, onClose }: QRCodeModalProps) => {
     return () => clearInterval(interval);
   }, []);
 
-  if (!qrToken) return null;
+  if (!qrToken && !redeemQrToken) return null;
 
-  const qrValue = JSON.stringify(qrToken);
-  const expiresAt = new Date(qrToken.exp * 1000);
+  const isRedeem = !!redeemQrToken;
+
+  const qrValue = isRedeem
+    ? JSON.stringify({
+        type: 'REDEEM_QR',
+        payload: {
+          cardId: redeemQrToken!.cardId,
+          nonce: redeemQrToken!.nonce,
+          exp: redeemQrToken!.exp,
+          sig: redeemQrToken!.sig,
+        },
+      })
+    : JSON.stringify(qrToken);
+
+  const expTimestamp = isRedeem ? redeemQrToken!.exp : qrToken!.exp;
+  const expiresAt = new Date(expTimestamp * 1000);
   const totalSeconds = Math.max(0, Math.floor((expiresAt.getTime() - currentTime.getTime()) / 1000));
 
   const minutes = Math.floor(totalSeconds / 60);
@@ -35,8 +50,12 @@ const QRCodeModal = ({ qrToken, onClose }: QRCodeModalProps) => {
         <button className="qr-modal-close" onClick={onClose}>×</button>
         
         <div className="qr-modal-header">
-          <h2>QR Code</h2>
-          <p className="qr-subtitle">Mostre este código para o estabelecimento</p>
+          <h2>{isRedeem ? 'QR de Resgate' : 'QR Code'}</h2>
+          <p className="qr-subtitle">
+            {isRedeem
+              ? 'Mostre este código para resgatar sua recompensa'
+              : 'Mostre este código para o estabelecimento'}
+          </p>
         </div>
 
         <div className="qr-code-container">
@@ -60,7 +79,9 @@ const QRCodeModal = ({ qrToken, onClose }: QRCodeModalProps) => {
             </span>
           </div>
           <p className="qr-hint">
-            O estabelecimento irá escanear este código para adicionar um carimbo ao seu cartão
+            {isRedeem
+              ? 'O estabelecimento irá escanear este código para liberar sua recompensa'
+              : 'O estabelecimento irá escanear este código para adicionar um carimbo ao seu cartão'}
           </p>
         </div>
 
