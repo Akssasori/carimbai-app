@@ -30,9 +30,12 @@ const HomeScreen = ({
       if (response.cards && response.cards.length > 0) {
         const newCard = response.cards[0];
         
-        // Se está fazendo polling e detectou novo carimbo
         if (isPolling && qrToken && previousStampsCount > 0 && newCard.stampsCount > previousStampsCount) {
-          setQrToken(null); // Fecha o modal
+          setQrToken(null);
+        }
+
+        if (isPolling && redeemQrToken && newCard.status === 'ACTIVE' && newCard.stampsCount === 0) {
+          setRedeemQrToken(null);
         }
         
         setCard(newCard);
@@ -52,16 +55,25 @@ const HomeScreen = ({
     fetchCard();
   }, [customerId]);
 
-  // Polling quando o QR Code está aberto
   useEffect(() => {
     if (!qrToken) return;
 
     const intervalId = setInterval(() => {
       fetchCard(true);
-    }, 2000); // Verifica a cada 2 segundos
+    }, 2000);
 
     return () => clearInterval(intervalId);
   }, [qrToken, customerId, previousStampsCount]);
+
+  useEffect(() => {
+    if (!redeemQrToken) return;
+
+    const intervalId = setInterval(() => {
+      fetchCard(true);
+    }, 2000);
+
+    return () => clearInterval(intervalId);
+  }, [redeemQrToken, customerId]);
 
   const handleShowQR = async () => {
     if (!card) return;
