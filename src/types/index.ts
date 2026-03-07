@@ -95,6 +95,7 @@ export interface RedeemQrTokenResponse {
 }
 
 export interface RedeemQrRequest {
+  cardId: number;
   locationId?: number;
   redeemQr: RedeemQrPayload;
 }

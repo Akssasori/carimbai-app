@@ -222,6 +222,7 @@ export default function StaffScreen() {
 
       const response = await apiService.redeemWithQr(
         {
+          cardId: payload.cardId,
           locationId: parsedLocationId,
           redeemQr: {
             cardId: payload.cardId,
