@@ -6,7 +6,7 @@ export interface Card {
   rewardName: string;
   stampsCount: number;
   stampsNeeded: number;
-  status: 'ACTIVE' | 'INACTIVE' | 'REDEEMED';
+  status: 'ACTIVE' | 'BLOCKED' | 'EXPIRED' | 'READY_TO_REDEEM';
   hasReward: boolean;
 }
 
@@ -77,6 +77,26 @@ export interface StaffLoginResponse {
 export interface RedeemRequest {
   cardId: number;
   locationId?: number;
+}
+
+export interface RedeemQrPayload {
+  cardId: number;
+  nonce: string;
+  exp: number;
+  sig: string;
+}
+
+export interface RedeemQrTokenResponse {
+  type: string;
+  cardId: number;
+  nonce: string;
+  exp: number;
+  sig: string;
+}
+
+export interface RedeemQrRequest {
+  locationId?: number;
+  redeemQr: RedeemQrPayload;
 }
 
 export interface RedeemResponse {

@@ -13,8 +13,19 @@ interface StampResult {
   timestamp: string;
 }
 
-interface HistoryItem extends StampResult {
+interface RedeemResult {
+  cardId: string;
+  timestamp: string;
+}
+
+interface HistoryItem {
   id: string;
+  type: 'stamp' | 'redeem';
+  cardId: string;
+  stampsCount?: number;
+  maxStamps?: number;
+  rewardEarned: boolean;
+  timestamp: string;
 }
 
 interface StaffSession {
@@ -42,10 +53,12 @@ export default function StaffScreen() {
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<StampResult | null>(null);
+  const [redeemResult, setRedeemResult] = useState<RedeemResult | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const processingRef = useRef(false);
   const [locationId, setLocationId] = useState<string>('1');
+  const [cashierPin, setCashierPin] = useState<string>('');
   const [activeNav, setActiveNav] = useState('scan');
 
   useEffect(() => {
@@ -94,6 +107,7 @@ export default function StaffScreen() {
     setScanning(true);
     setError(null);
     setResult(null);
+    setRedeemResult(null);
     processingRef.current = false;
   };
 
@@ -116,7 +130,11 @@ export default function StaffScreen() {
         scannerRef.current = null;
       }
       setScanning(false);
-      await applyStamp(qrData);
+      if (qrData.type === 'REDEEM_QR') {
+        await applyRedeem(qrData.payload);
+      } else {
+        await applyStamp(qrData);
+      }
     } catch (err) {
       console.error(err);
       setError('QR Code inválido. Não foi possível ler os dados.');
@@ -141,9 +159,6 @@ export default function StaffScreen() {
         return;
       }
 
-      console.log('Location ID before validation:', locationId);
-
-      // valida locationId
       const trimmed = locationId.trim();
       const parsedLocationId = Number(trimmed);
 
@@ -151,8 +166,6 @@ export default function StaffScreen() {
         setError('Informe um ID de loja (Location) válido antes de carimbar.');
         return;
       }
-
-      console.log('Applying stamp with locationId:', parsedLocationId);
 
       const idempotencyKey = `${qrData.idRef}-${Date.now()}-${crypto.randomUUID()}`;
       const response = await apiService.applyStamp(
@@ -169,7 +182,7 @@ export default function StaffScreen() {
         session.token,
         parsedLocationId
       );
-      
+
       const nowIso = new Date().toISOString();
       const stampResult: StampResult = {
         cardId: response.cardId.toString(),
@@ -181,12 +194,63 @@ export default function StaffScreen() {
       setResult(stampResult);
       const historyItem: HistoryItem = {
         ...stampResult,
+        type: 'stamp',
         id: `${response.cardId}-${Date.now()}`,
       };
       setHistory((prev) => [historyItem, ...prev]);
       setError(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao processar carimbo';
+      setError(message);
+    }
+  };
+
+  const applyRedeem = async (payload: { cardId: number; nonce: string; exp: number; sig: string }) => {
+    try {
+      if (!session) {
+        setError('Faça login como lojista antes de resgatar recompensas.');
+        return;
+      }
+
+      const trimmed = locationId.trim();
+      const parsedLocationId = Number(trimmed);
+
+      if (!trimmed || Number.isNaN(parsedLocationId) || parsedLocationId <= 0) {
+        setError('Informe um ID de loja (Location) válido antes de resgatar.');
+        return;
+      }
+
+      const response = await apiService.redeemWithQr(
+        {
+          locationId: parsedLocationId,
+          redeemQr: {
+            cardId: payload.cardId,
+            nonce: payload.nonce,
+            exp: payload.exp,
+            sig: payload.sig,
+          },
+        },
+        session.token,
+        cashierPin || undefined
+      );
+
+      const nowIso = new Date().toISOString();
+      const redeemRes: RedeemResult = {
+        cardId: (response.cardId ?? payload.cardId).toString(),
+        timestamp: nowIso,
+      };
+      setRedeemResult(redeemRes);
+      const historyItem: HistoryItem = {
+        id: `redeem-${payload.cardId}-${Date.now()}`,
+        type: 'redeem',
+        cardId: redeemRes.cardId,
+        rewardEarned: true,
+        timestamp: nowIso,
+      };
+      setHistory((prev) => [historyItem, ...prev]);
+      setError(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao resgatar recompensa';
       setError(message);
     }
   };
@@ -250,6 +314,15 @@ export default function StaffScreen() {
                 value={locationId}
                 onChange={e => setLocationId(e.target.value)}
                 placeholder="1"
+              />
+            </div>
+            <div className="location-select">
+              <label>PIN Caixa:</label>
+              <input
+                type="password"
+                value={cashierPin}
+                onChange={e => setCashierPin(e.target.value)}
+                placeholder="opcional"
               />
             </div>
             <button className="btn-logout" onClick={handleLogout}>Sair</button>
@@ -333,6 +406,22 @@ export default function StaffScreen() {
                 </div>
               </div>
             )}
+
+            {redeemResult && (
+              <div className="result-card with-reward">
+                <div className="result-header">
+                  <span className="result-status">🎁 Recompensa Resgatada</span>
+                  <span className="result-time">{formatTimestamp(redeemResult.timestamp)}</span>
+                </div>
+                <div className="result-body">
+                  <div className="result-row">
+                    <span>Cartão</span>
+                    <strong>{redeemResult.cardId}</strong>
+                  </div>
+                  <div className="reward-alert">✅ Resgate confirmado com sucesso!</div>
+                </div>
+              </div>
+            )}
           </section>
 
           <section className="activity-card">
@@ -349,10 +438,14 @@ export default function StaffScreen() {
               ) : (
                 history.slice(0, 10).map((item) => (
                   <div key={item.id} className="activity-item">
-                    <div className="activity-icon">{item.rewardEarned ? '🎁' : '✓'}</div>
+                    <div className="activity-icon">{item.type === 'redeem' ? '🎁' : item.rewardEarned ? '🎁' : '✓'}</div>
                     <div className="activity-info">
                       <span className="activity-title">Cartão #{item.cardId}</span>
-                      <span className="activity-meta">{item.stampsCount}/{item.maxStamps} carimbos</span>
+                      <span className="activity-meta">
+                        {item.type === 'redeem'
+                          ? 'Recompensa resgatada'
+                          : `${item.stampsCount}/${item.maxStamps} carimbos`}
+                      </span>
                     </div>
                     <span className="activity-time">{formatTimestamp(item.timestamp)}</span>
                   </div>

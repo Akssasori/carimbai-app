@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import "./CustomerScreen.css";
-import type { Card, QRTokenResponse } from "../types";
+import type { Card, QRTokenResponse, RedeemQrTokenResponse } from "../types";
 import { apiService } from "../services/api";
 import QRCodeModal from "./QRCodeModal";
 
@@ -17,7 +17,9 @@ const HomeScreen = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [qrToken, setQrToken] = useState<QRTokenResponse | null>(null);
+  const [redeemQrToken, setRedeemQrToken] = useState<RedeemQrTokenResponse | null>(null);
   const [loadingQR, setLoadingQR] = useState(false);
+  const [loadingRedeemQR, setLoadingRedeemQR] = useState(false);
   const [previousStampsCount, setPreviousStampsCount] = useState<number>(0);
 
   const fetchCard = async (isPolling = false) => {
@@ -76,8 +78,24 @@ const HomeScreen = ({
     }
   };
 
+  const handleShowRedeemQR = async () => {
+    if (!card) return;
+
+    try {
+      setLoadingRedeemQR(true);
+      const token = await apiService.getRedeemQR(card.cardId);
+      setRedeemQrToken(token);
+    } catch (err) {
+      console.error("Erro ao gerar QR de resgate:", err);
+      alert("Erro ao gerar QR de resgate. Tente novamente.");
+    } finally {
+      setLoadingRedeemQR(false);
+    }
+  };
+
   const handleCloseQR = () => {
     setQrToken(null);
+    setRedeemQrToken(null);
   };
 
   if (loading) {
@@ -149,35 +167,45 @@ const HomeScreen = ({
         </div>
 
         <div className="actions">
-          <button
-            className="btn-primary"
-            onClick={handleShowQR}
-            disabled={loadingQR}
-          >
-            <svg
-              className="btn-icon"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ marginRight: "8px" }}
+          {card.status === 'READY_TO_REDEEM' ? (
+            <button
+              className="btn-primary"
+              onClick={handleShowRedeemQR}
+              disabled={loadingRedeemQR}
             >
-              <rect x="3" y="3" width="7" height="7" />
-              <rect x="14" y="3" width="7" height="7" />
-              <rect x="3" y="14" width="7" height="7" />
-              <path d="M14 14h.01M14 17h.01M17 14h.01M17 17h.01M20 14h.01M20 17h.01M20 20h.01M17 20h.01M14 20h.01" />
-            </svg>
+              🎁 {loadingRedeemQR ? "Gerando..." : "Gerar QR de Resgate"}
+            </button>
+          ) : (
+            <button
+              className="btn-primary"
+              onClick={handleShowQR}
+              disabled={loadingQR}
+            >
+              <svg
+                className="btn-icon"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ marginRight: "8px" }}
+              >
+                <rect x="3" y="3" width="7" height="7" />
+                <rect x="14" y="3" width="7" height="7" />
+                <rect x="3" y="14" width="7" height="7" />
+                <path d="M14 14h.01M14 17h.01M17 14h.01M17 17h.01M20 14h.01M20 17h.01M20 20h.01M17 20h.01M14 20h.01" />
+              </svg>
 
-            {loadingQR ? "Gerando..." : "Mostrar QR Code"}
-          </button>
+              {loadingQR ? "Gerando..." : "Mostrar QR Code"}
+            </button>
+          )}
         </div>
       </main>
 
-      <QRCodeModal qrToken={qrToken} onClose={handleCloseQR} />
+      <QRCodeModal qrToken={qrToken} redeemQrToken={redeemQrToken} onClose={handleCloseQR} />
     </div>
   );
 };
