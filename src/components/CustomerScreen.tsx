@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import QRCode from "react-qr-code";
 import "./CustomerScreen.css";
 import type { Card, QRTokenResponse, RedeemQrTokenResponse } from "../types";
 import { apiService } from "../services/api";
@@ -144,6 +145,8 @@ const HomeScreen = ({
   }
 
   if (cards.length === 0) {
+    const idQrValue = JSON.stringify({ type: "CUSTOMER_ID", customerId });
+
     return (
       <div className="home-screen">
         <header className="home-header">
@@ -154,9 +157,17 @@ const HomeScreen = ({
         </header>
         <main className="home-content">
           <div className="empty-cards-state">
-            <span className="empty-icon">🎴</span>
             <h2>Nenhuma promoção ativa</h2>
-            <p>Você ainda não participa de nenhuma promoção. Visite um estabelecimento parceiro para começar!</p>
+            <p>Mostre este código ao estabelecimento para se inscrever em uma promoção</p>
+            <div className="id-qr-wrapper">
+              <QRCode
+                value={idQrValue}
+                size={200}
+                level="H"
+                style={{ maxWidth: "100%", height: "auto" }}
+              />
+            </div>
+            <p className="id-qr-hint">Peça ao atendente para escanear seu QR code</p>
           </div>
         </main>
       </div>

@@ -69,6 +69,9 @@ export default function StaffScreen() {
   const [enrollError, setEnrollError] = useState<string | null>(null);
   const [enrollSuccess, setEnrollSuccess] = useState<string | null>(null);
   const [enrollingProgramId, setEnrollingProgramId] = useState<number | null>(null);
+  const [enrollScanning, setEnrollScanning] = useState(false);
+  const enrollScannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const enrollProcessingRef = useRef(false);
 
   const activeMerchantName = session?.merchants?.find(m => m.merchantId === session.merchantId)?.merchantName ?? `Merchant #${session?.merchantId}`;
 
@@ -134,6 +137,98 @@ export default function StaffScreen() {
       setEnrollingProgramId(null);
     }
   };
+
+  const startEnrollScan = () => {
+    setEnrollScanning(true);
+    setEnrollError(null);
+    setEnrollSuccess(null);
+    setEnrollPrograms([]);
+    enrollProcessingRef.current = false;
+  };
+
+  const stopEnrollScan = async () => {
+    if (enrollScannerRef.current) {
+      await enrollScannerRef.current.clear();
+      enrollScannerRef.current = null;
+    }
+    setEnrollScanning(false);
+    enrollProcessingRef.current = false;
+  };
+
+  const onEnrollScanSuccess = async (decodedText: string) => {
+    if (enrollProcessingRef.current) return;
+    enrollProcessingRef.current = true;
+    try {
+      const data = JSON.parse(decodedText);
+      if (enrollScannerRef.current) {
+        await enrollScannerRef.current.clear();
+        enrollScannerRef.current = null;
+      }
+      setEnrollScanning(false);
+
+      if (data.type === 'CUSTOMER_ID' && data.customerId) {
+        setEnrollCustomerId(String(data.customerId));
+        if (session) {
+          setEnrollLoading(true);
+          setEnrollError(null);
+          setEnrollPrograms([]);
+          try {
+            const programs = await apiService.getMerchantPrograms(session.merchantId);
+            if (programs.length === 0) {
+              setEnrollError('Nenhuma promoção ativa para este merchant.');
+            }
+            setEnrollPrograms(programs);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Erro ao buscar promoções';
+            setEnrollError(message);
+          } finally {
+            setEnrollLoading(false);
+          }
+        }
+      } else {
+        setEnrollError('QR Code inválido. Esperado QR de identificação do cliente.');
+      }
+    } catch {
+      setEnrollError('QR Code inválido. Não foi possível ler os dados.');
+      if (enrollScannerRef.current) {
+        await enrollScannerRef.current.clear();
+        enrollScannerRef.current = null;
+      }
+      setEnrollScanning(false);
+    } finally {
+      enrollProcessingRef.current = false;
+    }
+  };
+
+  useEffect(() => {
+    if (enrollScanning && !enrollScannerRef.current) {
+      setTimeout(() => {
+        const scanner = new Html5QrcodeScanner(
+          'enroll-qr-reader',
+          { qrbox: { width: 250, height: 250 }, fps: 10, aspectRatio: 1.0 },
+          false
+        );
+        enrollScannerRef.current = scanner;
+        scanner.render(onEnrollScanSuccess, () => {});
+      }, 100);
+    }
+    return () => {
+      if (enrollScannerRef.current) {
+        enrollScannerRef.current.clear().catch(console.error).finally(() => {
+          enrollScannerRef.current = null;
+        });
+      }
+    };
+  }, [enrollScanning]);
+
+  useEffect(() => {
+    if (activeNav !== 'users' && enrollScannerRef.current) {
+      enrollScannerRef.current.clear().catch(console.error).finally(() => {
+        enrollScannerRef.current = null;
+      });
+      setEnrollScanning(false);
+    }
+  }, [activeNav]);
 
   useEffect(() => {
     if (!session) {
@@ -423,12 +518,43 @@ export default function StaffScreen() {
         {activeNav === 'users' ? (
           <section className="enroll-section">
             <h2>Inscrever Cliente em Promoção</h2>
-            <p className="enroll-desc">Digite o ID do cliente e escolha a promoção para inscrevê-lo</p>
+            <p className="enroll-desc">Escaneie o QR de identificação do cliente ou digite o ID manualmente</p>
 
             {enrollError && <div className="error-message">{enrollError}</div>}
             {enrollSuccess && <div className="enroll-success">{enrollSuccess}</div>}
 
+            {!enrollScanning && !enrollCustomerId.trim() && enrollPrograms.length === 0 && (
+              <div className="enroll-scan-area">
+                <div className="scanner-placeholder" onClick={startEnrollScan}>
+                  <div className="qr-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="7" height="7" />
+                      <rect x="14" y="3" width="7" height="7" />
+                      <rect x="3" y="14" width="7" height="7" />
+                      <rect x="14" y="14" width="3" height="3" />
+                      <rect x="18" y="14" width="3" height="3" />
+                      <rect x="14" y="18" width="3" height="3" />
+                      <rect x="18" y="18" width="3" height="3" />
+                    </svg>
+                  </div>
+                  <span>Escanear QR do Cliente</span>
+                </div>
+              </div>
+            )}
+
+            {enrollScanning && (
+              <div className="enroll-scan-area">
+                <div className="scanner-active">
+                  <div id="enroll-qr-reader"></div>
+                  <button className="btn-cancel" onClick={stopEnrollScan}>Cancelar</button>
+                </div>
+              </div>
+            )}
+
             <div className="enroll-form">
+              <div className="enroll-divider">
+                <span>ou digite manualmente</span>
+              </div>
               <div className="enroll-input-group">
                 <label>Customer ID:</label>
                 <input
@@ -450,6 +576,7 @@ export default function StaffScreen() {
 
             {enrollPrograms.length > 0 && (
               <div className="enroll-programs-list">
+                <h3 className="enroll-programs-title">Cliente #{enrollCustomerId} - Escolha a promoção:</h3>
                 {enrollPrograms.map(program => (
                   <div key={program.id} className="enroll-program-card">
                     <div className="enroll-program-info">

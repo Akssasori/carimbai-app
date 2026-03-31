@@ -431,6 +431,47 @@
   color: #888;
 }
 
+.enroll-scan-area {
+  margin-bottom: 24px;
+}
+
+.enroll-scan-area .scanner-placeholder {
+  padding: 36px;
+}
+
+.enroll-scan-area .scanner-active {
+  max-width: 400px;
+}
+
+#enroll-qr-reader {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.enroll-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  color: #aaa;
+  font-size: 13px;
+}
+
+.enroll-divider::before,
+.enroll-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e0e0e0;
+}
+
+.enroll-programs-title {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
 .enroll-form {
   margin-bottom: 24px;
 }
