@@ -1,4 +1,4 @@
-import type { CustomerCardsResponse, QRTokenResponse, StampRequest, StampResponse, CustomerLoginRequest, CustomerLoginResponse, StaffLoginResponse, RedeemRequest, RedeemResponse, RedeemQrTokenResponse, RedeemQrRequest } from '../types';
+import type { CustomerCardsResponse, QRTokenResponse, StampRequest, StampResponse, CustomerLoginRequest, CustomerLoginResponse, StaffLoginResponse, RedeemRequest, RedeemResponse, RedeemQrTokenResponse, RedeemQrRequest, ProgramItem, EnrollCardResponse } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||'http://localhost:1234/api';
 
@@ -31,19 +31,72 @@ class ApiService {
     return response.json();
   }
 
-  async loginStaff(email: string, password: string): Promise<StaffLoginResponse> {
+  async loginStaff(email: string, password: string, merchantId?: number): Promise<StaffLoginResponse> {
+    const body: Record<string, unknown> = { email, password };
+    if (merchantId != null) {
+      body.merchantId = merchantId;
+    }
+
     const response = await fetch(`${this.baseUrl}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`Erro ao fazer login do staff: ${response.status} - ${text}`);
+    }
+
+    return response.json();
+  }
+
+  async switchMerchant(merchantId: number, token: string): Promise<StaffLoginResponse> {
+    const response = await fetch(`${this.baseUrl}/auth/switch-merchant`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ merchantId }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao trocar merchant: ${response.status} - ${text}`);
+    }
+
+    return response.json();
+  }
+
+  async getMerchantPrograms(merchantId: number): Promise<ProgramItem[]> {
+    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/programs`);
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao buscar programas: ${response.status} - ${text}`);
+    }
+
+    return response.json();
+  }
+
+  async enrollCustomer(programId: number, customerId: number): Promise<EnrollCardResponse> {
+    const response = await fetch(`${this.baseUrl}/cards`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ programId, customerId }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao inscrever cliente: ${response.status} - ${text}`);
     }
 
     return response.json();
@@ -104,8 +157,6 @@ class ApiService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    console.log('****Location ID: *****', locationId);
-
     if (locationId != null) {
     headers['X-Location-Id'] = String(locationId);
     }
@@ -162,6 +213,34 @@ class ApiService {
     }
 
     return response.json();
+  }
+
+  async getVapidPublicKey(): Promise<{ publicKey: string }> {
+    const response = await fetch(`${this.baseUrl}/notifications/vapid-public-key`);
+    if (!response.ok) {
+      throw new Error('Erro ao buscar VAPID key');
+    }
+    return response.json();
+  }
+
+  async subscribePush(customerId: number, subscription: PushSubscription): Promise<void> {
+    const json = subscription.toJSON();
+    const response = await fetch(`${this.baseUrl}/notifications/subscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerId,
+        endpoint: json.endpoint,
+        keys: {
+          p256dh: json.keys?.p256dh,
+          auth: json.keys?.auth,
+        },
+      }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao inscrever push: ${response.status} - ${text}`);
+    }
   }
 
 }

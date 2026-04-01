@@ -34,6 +34,7 @@ export default function StaffLogin() {
         staffId: res.staffId,
         role: res.role,
         merchantId: res.merchantId,
+        merchants: res.merchants,
       };
       localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(session));
       navigate('/staff/dashboard', { replace: true });

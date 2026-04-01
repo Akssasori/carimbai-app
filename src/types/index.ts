@@ -67,11 +67,37 @@ export interface CustomerLoginResponse {
   created: boolean;
 }
 
+export interface MerchantInfo {
+  merchantId: number;
+  merchantName: string;
+  role: 'ADMIN' | 'CASHIER';
+  isDefault: boolean;
+}
+
 export interface StaffLoginResponse {
   token: string;
   staffId: number;
+  merchantId: number;
   role: 'ADMIN' | 'CASHIER';
-  merchantId?: number;
+  email: string;
+  merchants: MerchantInfo[];
+}
+
+export interface SwitchMerchantRequest {
+  merchantId: number;
+}
+
+export interface ProgramItem {
+  id: number;
+  name: string;
+  description?: string;
+  ruleTotalStamps: number;
+  rewardName: string;
+  category?: string;
+  imageUrl?: string;
+  startAt?: string;
+  endAt?: string;
+  sortOrder: number;
 }
 
 export interface RedeemRequest {
@@ -112,4 +138,12 @@ export interface QRCodeData {
   nonce: string;
   exp: number;
   sig: string;
+}
+
+export interface EnrollCardResponse {
+  id: number;
+  programId: number;
+  customerId: number;
+  stampsCount: number;
+  status: string;
 }
