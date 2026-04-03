@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import QRCode from "react-qr-code";
 import "./CustomerScreen.css";
 import type { Card, QRTokenResponse, RedeemQrTokenResponse } from "../types";
@@ -23,7 +23,7 @@ const HomeScreen = ({
   const [redeemQrToken, setRedeemQrToken] = useState<RedeemQrTokenResponse | null>(null);
   const [loadingQR, setLoadingQR] = useState(false);
   const [loadingRedeemQR, setLoadingRedeemQR] = useState(false);
-  const [previousStampsCount, setPreviousStampsCount] = useState<number>(0);
+  const previousStampsCountRef = useRef<number>(0);
   const { permission, supported, subscribed, loading: pushLoading, subscribe: subscribePush } = usePushNotifications(customerId);
 
   const card = cards.length > 0 ? cards[selectedIndex] ?? null : null;
@@ -39,16 +39,16 @@ const HomeScreen = ({
         if (isPolling && card) {
           const updatedCurrent = updatedCards.find(c => c.cardId === card.cardId);
           if (updatedCurrent) {
-            if (qrToken && previousStampsCount > 0 && updatedCurrent.stampsCount > previousStampsCount) {
+            if (qrToken && previousStampsCountRef.current > 0 && updatedCurrent.stampsCount > previousStampsCountRef.current) {
               setQrToken(null);
             }
             if (redeemQrToken && updatedCurrent.status === 'ACTIVE' && updatedCurrent.stampsCount === 0) {
               setRedeemQrToken(null);
             }
-            setPreviousStampsCount(updatedCurrent.stampsCount);
+            previousStampsCountRef.current = updatedCurrent.stampsCount;
           }
         } else if (!isPolling && updatedCards.length > 0) {
-          setPreviousStampsCount(updatedCards[0].stampsCount);
+          previousStampsCountRef.current = updatedCards[0].stampsCount;
         }
 
         setCards(updatedCards);
@@ -77,7 +77,7 @@ const HomeScreen = ({
     if (!qrToken) return;
     const intervalId = setInterval(() => fetchCards(true), 2000);
     return () => clearInterval(intervalId);
-  }, [qrToken, customerId, previousStampsCount]);
+  }, [qrToken, customerId]);
 
   useEffect(() => {
     if (!redeemQrToken) return;
@@ -91,7 +91,7 @@ const HomeScreen = ({
     setRedeemQrToken(null);
     const selected = cards[index];
     if (selected) {
-      setPreviousStampsCount(selected.stampsCount);
+      previousStampsCountRef.current = selected.stampsCount;
     }
   };
 
