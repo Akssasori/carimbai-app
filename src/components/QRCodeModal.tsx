@@ -9,6 +9,14 @@ interface QRCodeModalProps {
   onClose: () => void;
 }
 
+const TimerIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="timer-icon">
+    <circle cx="8" cy="9" r="6" stroke="white" strokeWidth="1.5" />
+    <path d="M8 6v3.5l2.5 1.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M6.5 2h3" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+);
+
 const QRCodeModal = ({ qrToken, redeemQrToken, onClose }: QRCodeModalProps) => {
 
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -62,7 +70,7 @@ const QRCodeModal = ({ qrToken, redeemQrToken, onClose }: QRCodeModalProps) => {
           <div className="qr-code-wrapper">
             <QRCode 
               value={qrValue}
-              size={256}
+              size={208}
               level="H"
               style={{ maxWidth: '100%', height: 'auto' }}
             />
@@ -71,7 +79,7 @@ const QRCodeModal = ({ qrToken, redeemQrToken, onClose }: QRCodeModalProps) => {
 
         <div className="qr-info">
           <div className="qr-timer">
-            <span className="timer-icon">⏱️</span>
+            <TimerIcon />
             <span className="timer-text">
               {totalSeconds > 0 
                 ? `Válido por ${minutes}:${seconds.toString().padStart(2, '0')}`
