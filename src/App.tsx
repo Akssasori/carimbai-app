@@ -37,6 +37,7 @@ function App() {
                 <HomeScreen
                   customerId={customer.customerId}
                   customerName={customer.name ?? 'Cliente'}
+                  customerEmail={customer.email}
                 />
               )}
             </>

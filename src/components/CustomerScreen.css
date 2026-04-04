@@ -1,43 +1,111 @@
 .home-screen {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 1rem;
+  background: linear-gradient(135deg, #312e81 0%, #4338ca 50%, #6d28d9 100%);
   display: flex;
   flex-direction: column;
 }
 
-.home-header {
-  padding: 2rem 1rem;
-  color: white;
-  text-align: center;
+/* ── Nav Bar ── */
+.nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 48px;
 }
 
-.header-top-row {
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-brand-icon {
+  width: 32px;
+  height: 32px;
+  color: white;
+}
+
+.nav-brand-text {
+  font-size: 24px;
+  font-weight: 800;
+  color: white;
+  letter-spacing: -0.5px;
+  margin: 0;
+}
+
+.nav-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #4f46e5, #8b5cf6);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* ── Welcome Header (glassmorphism) ── */
+.welcome-header {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 33px 41px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  width: 100%;
+}
+
+.welcome-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.greeting {
+  font-size: 28px;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.subtitle {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+  font-weight: 400;
 }
 
 .btn-push-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  color: white;
-  padding: 0.35rem 0.75rem;
-  border-radius: 1.25rem;
-  font-size: 0.75rem;
-  font-weight: 500;
+  gap: 8px;
+  background: white;
+  border: none;
+  color: #4b3bff;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
   white-space: nowrap;
   flex-shrink: 0;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  font-family: inherit;
 }
 
 .btn-push-toggle:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
 .btn-push-toggle:disabled {
@@ -48,205 +116,37 @@
 .push-active-badge {
   display: inline-flex;
   align-items: center;
-  color: rgba(255, 255, 255, 0.7);
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  color: rgba(255, 255, 255, 0.8);
   flex-shrink: 0;
 }
 
-.greeting {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0;
-  margin-bottom: 0.5rem;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.subtitle {
-  font-size: 1rem;
-  opacity: 0.9;
-  margin: 0;
-  font-weight: 300;
-}
-
+/* ── Main Content ── */
 .home-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-}
-
-.card-container {
-  flex: 1;
-  display: flex;
   align-items: center;
-  justify-content: center;
-}
-
-.loyalty-card {
-  background: white;
-  border-radius: 1.5rem;
-  padding: 2rem 1.5rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  padding: 40px 20px 80px;
+  gap: 48px;
+  max-width: 640px;
   width: 100%;
-  max-width: 400px;
+  margin: 0 auto;
 }
 
-.card-header {
-  text-align: center;
-  margin-bottom: 1.5rem;
-}
-
-.card-header h2 {
-  font-size: 1.5rem;
-  color: #333;
-  margin: 0 0 0.5rem 0;
-  font-weight: 600;
-}
-
-.merchant-name {
-  font-size: 0.9rem;
-  color: #666;
-  margin: 0 0 0.25rem 0;
-}
-
-.reward-info {
-  font-size: 0.85rem;
-  color: #999;
-  margin: 0;
-}
-
-.stamps-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-
-.stamp {
-  aspect-ratio: 1;
-  border: 2px solid #e0e0e0;
-  border-radius: 0.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 1rem;
-  color: #999;
-  background: #f8f9fa;
-  transition: all 0.3s ease;
-}
-
-.stamp.filled {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-color: #667eea;
-  color: white;
-  font-size: 1.25rem;
-  transform: scale(1.05);
-}
-
-.progress-info {
-  margin-top: 1rem;
-}
-
-.stamps-count {
-  text-align: center;
-  font-size: 1rem;
-  color: #666;
-  margin: 0 0 0.75rem 0;
-  font-weight: 500;
-}
-
-.progress-bar {
-  height: 8px;
-  background: #e0e0e0;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-  transition: width 0.5s ease;
-  border-radius: 4px;
-}
-
-.reward-available {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
-  border-radius: 1rem;
-  text-align: center;
-  color: white;
-}
-
-.reward-badge {
-  font-size: 2rem;
-  display: block;
-  margin-bottom: 0.5rem;
-}
-
-.reward-available p {
-  margin: 0;
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-.actions {
-  padding: 0 0 2rem 0;
-  display: flex;
-  justify-content: center;
-}
-
-.btn-primary {
-  background: white;
-  color: #667eea;
-  border: none;
-  padding: 1rem 2.5rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  border-radius: 2rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease;
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
-}
-
-.btn-primary:active {
-  transform: translateY(0);
-}
-
-.btn-icon {
-  font-size: 1.5rem;
-}
-
-.loading,
-.error {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  color: white;
-  font-size: 1.25rem;
-  font-weight: 500;
-}
-
-.error {
-  color: #ffcccc;
-}
-
+/* ── Card Tabs ── */
 .card-tabs {
   display: flex;
   gap: 0.5rem;
   overflow-x: auto;
-  padding: 0 0.25rem 0.5rem;
+  padding: 0 0.25rem 1.5rem;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  width: 100%;
 }
 
 .card-tabs::-webkit-scrollbar {
@@ -265,6 +165,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+  font-family: inherit;
 }
 
 .card-tab:hover {
@@ -273,12 +174,233 @@
 
 .card-tab.active {
   background: white;
-  color: #667eea;
+  color: #4b3bff;
   border-color: white;
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* ── Loyalty Card ── */
+.card-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.loyalty-card {
+  background: white;
+  border-radius: 32px;
+  padding: 0;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.card-gradient-bar {
+  height: 8px;
+  background: linear-gradient(135deg, #4f46e5 0%, #8b5cf6 100%);
+  width: 100%;
+}
+
+.card-inner {
+  padding: 56px 56px 48px;
+}
+
+.card-header {
+  text-align: center;
+  margin-bottom: 0;
+}
+
+.card-header h2 {
+  font-size: 32px;
+  color: #222224;
+  margin: 0 0 8px 0;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.merchant-name {
+  font-size: 18px;
+  color: #9aa0ab;
+  margin: 0 0 0 0;
+  font-weight: 400;
+}
+
+.reward-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #efe9ff;
+  color: #4b3bff;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  margin-top: 24px;
+}
+
+.reward-badge-icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* ── Stamps Grid ── */
+.stamps-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-top: 48px;
+  margin-bottom: 48px;
+}
+
+.stamp {
+  aspect-ratio: 1;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 28px;
+  color: #94a3b8;
+  background: #f8fafc;
+  border: 3px dashed #cbd5e1;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.stamp.filled {
+  background: linear-gradient(135deg, #4f46e5 0%, #8b5cf6 100%);
+  border: none;
+  color: white;
+  font-size: 0;
+  box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
+}
+
+.stamp.filled::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+}
+
+.stamp-check {
+  width: 40px;
+  height: 40px;
+}
+
+/* ── Progress ── */
+.progress-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stamps-count {
+  text-align: center;
+  font-size: 16px;
+  color: #222224;
+  margin: 0;
+  font-weight: 700;
+}
+
+.progress-bar {
+  height: 12px;
+  background: #f3f4f6;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #4f46e5 0%, #8b5cf6 100%);
+  transition: width 0.5s ease;
+  border-radius: 12px;
+}
+
+/* ── Reward Available ── */
+.reward-available {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #4f46e5, #8b5cf6);
+  border-radius: 1rem;
+  text-align: center;
+  color: white;
+}
+
+.reward-available-icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.reward-available p {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* ── Actions ── */
+.actions {
+  padding: 40px 0 0;
+  display: flex;
+  justify-content: center;
+}
+
+.btn-primary {
+  background: white;
+  color: #4b3bff;
+  border: none;
+  padding: 20px 48px;
+  font-size: 18px;
+  font-weight: 700;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  font-family: inherit;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 25px 30px -5px rgba(0, 0, 0, 0.2), 0 10px 15px -6px rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-icon {
+  width: 24px;
+  height: 24px;
+  color: #4b3bff;
+}
+
+/* ── Loading / Error ── */
+.loading,
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.error {
+  color: #ffcccc;
+}
+
+/* ── Empty State ── */
 .empty-cards-state {
   display: flex;
   flex-direction: column;
@@ -288,11 +410,6 @@
   text-align: center;
   color: white;
   flex: 1;
-}
-
-.empty-cards-state .empty-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
 }
 
 .empty-cards-state h2 {
@@ -326,21 +443,67 @@
   margin-top: 0.5rem;
 }
 
-@media (max-width: 480px) {
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .nav-bar {
+    padding: 16px 20px;
+  }
+
+  .nav-brand-text {
+    font-size: 20px;
+  }
+
+  .nav-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .welcome-header {
+    padding: 24px 20px;
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
   .greeting {
-    font-size: 1.75rem;
+    font-size: 24px;
   }
-  
-  .loyalty-card {
-    padding: 1.5rem 1rem;
+
+  .home-content {
+    padding: 24px 16px 60px;
   }
-  
+
+  .card-inner {
+    padding: 32px 20px 28px;
+  }
+
+  .card-header h2 {
+    font-size: 24px;
+  }
+
+  .merchant-name {
+    font-size: 15px;
+  }
+
   .stamps-grid {
-    gap: 0.5rem;
+    gap: 10px;
+    margin-top: 32px;
+    margin-bottom: 32px;
   }
-  
+
+  .stamp-check {
+    width: 28px;
+    height: 28px;
+  }
+
   .btn-primary {
-    padding: 0.875rem 2rem;
-    font-size: 1rem;
+    padding: 16px 32px;
+    font-size: 16px;
+  }
+
+  .reward-badge {
+    font-size: 14px;
+    padding: 10px 18px;
   }
 }

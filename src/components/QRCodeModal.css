@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(15, 23, 42, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -14,23 +14,22 @@
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .qr-modal-content {
   background: white;
-  border-radius: 1.5rem;
-  padding: 2rem;
+  border-radius: 12px;
+  padding: 40px 32px;
   max-width: 400px;
   width: 100%;
   position: relative;
   animation: slideUp 0.3s ease;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 @keyframes slideUp {
@@ -46,14 +45,14 @@
 
 .qr-modal-close {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: #f0f0f0;
+  top: 16px;
+  right: 16px;
+  background: #f3f4f6;
   border: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  font-size: 1.5rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  font-size: 1.25rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -65,62 +64,64 @@
 }
 
 .qr-modal-close:hover {
-  background: #e0e0e0;
+  background: #e5e7eb;
   transform: scale(1.1);
 }
 
 .qr-modal-header {
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 24px;
 }
 
 .qr-modal-header h2 {
-  font-size: 1.5rem;
-  color: #333;
-  margin: 0 0 0.5rem 0;
+  font-size: 20px;
+  color: #22212a;
+  margin: 0 0 8px 0;
   font-weight: 600;
 }
 
 .qr-subtitle {
-  font-size: 0.9rem;
-  color: #666;
+  font-size: 14px;
+  color: #9fa3b2;
   margin: 0;
 }
 
 .qr-code-container {
   display: flex;
   justify-content: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 24px;
 }
 
 .qr-code-wrapper {
-  padding: 1.5rem;
+  padding: 16px;
   background: white;
-  border-radius: 1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
   display: inline-block;
 }
 
 .qr-info {
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 24px;
 }
 
 .qr-timer {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  gap: 6px;
+  background: linear-gradient(to right, #6366f1, #9333ea);
   color: white;
-  padding: 0.75rem 1.5rem;
-  border-radius: 2rem;
-  font-size: 0.9rem;
+  padding: 10px 20px;
+  border-radius: 9999px;
+  font-size: 14px;
   font-weight: 600;
-  margin-bottom: 1rem;
+  margin-bottom: 24px;
 }
 
 .timer-icon {
-  font-size: 1.25rem;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
 }
 
 .timer-text {
@@ -128,28 +129,30 @@
 }
 
 .qr-hint {
-  font-size: 0.85rem;
-  color: #999;
-  margin: 1rem 0 0 0;
-  line-height: 1.4;
+  font-size: 13px;
+  color: #9fa3b2;
+  margin: 0;
+  line-height: 1.5;
+  max-width: 280px;
 }
 
 .btn-close-modal {
   width: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(to right, #6366f1, #8b5cf6);
   color: white;
   border: none;
-  padding: 1rem;
-  font-size: 1rem;
-  font-weight: 600;
-  border-radius: 0.75rem;
+  padding: 16px 24px;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
+  font-family: inherit;
 }
 
 .btn-close-modal:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
 }
 
 .btn-close-modal:active {
@@ -158,14 +161,14 @@
 
 @media (max-width: 480px) {
   .qr-modal-content {
-    padding: 1.5rem;
+    padding: 32px 24px;
   }
 
   .qr-modal-header h2 {
-    font-size: 1.25rem;
+    font-size: 18px;
   }
 
   .qr-code-wrapper {
-    padding: 1rem;
+    padding: 12px;
   }
 }
