@@ -49,8 +49,8 @@ const HomeScreen = ({
   const [loadingQR, setLoadingQR] = useState(false);
   const [loadingRedeemQR, setLoadingRedeemQR] = useState(false);
   const [modalSuccess, setModalSuccess] = useState<'stamp' | 'redeem' | null>(null);
-  const [sseFailed, setSseFailed] = useState(false);
   const previousStampsCountRef = useRef<number>(0);
+  const successTriggeredRef = useRef(false);
   const { permission, supported, subscribed, loading: pushLoading, subscribe: subscribePush } = usePushNotifications(customerId);
 
   const card = cards.length > 0 ? cards[selectedIndex] ?? null : null;
@@ -111,11 +111,14 @@ const HomeScreen = ({
   }, [customerId, selectedIndex]);
 
   const triggerSuccess = useCallback((type: 'stamp' | 'redeem') => {
+    if (successTriggeredRef.current) return;
+    successTriggeredRef.current = true;
     setModalSuccess(type);
     setTimeout(() => {
       setQrToken(null);
       setRedeemQrToken(null);
       setModalSuccess(null);
+      successTriggeredRef.current = false;
       fetchCards();
     }, 1800);
   }, [fetchCards]);
@@ -138,16 +141,12 @@ const HomeScreen = ({
     triggerSuccess('redeem');
   }, [triggerSuccess]);
 
-  const handleSseConnectionFailed = useCallback(() => {
-    setSseFailed(true);
-  }, []);
-
   useCardEvents({
     cardId: card?.cardId ?? null,
     enabled: modalIsOpen,
     onStampApplied: handleSseStampApplied,
     onRedeemed: handleSseRedeemed,
-    onConnectionFailed: handleSseConnectionFailed,
+    onConnectionFailed: () => {},
   });
 
   useEffect(() => {
@@ -155,10 +154,10 @@ const HomeScreen = ({
   }, [customerId]);
 
   useEffect(() => {
-    if (!modalIsOpen || !sseFailed) return;
-    const intervalId = setInterval(() => fetchCards(true), 2000);
+    if (!modalIsOpen) return;
+    const intervalId = setInterval(() => fetchCards(true), 3000);
     return () => clearInterval(intervalId);
-  }, [modalIsOpen, sseFailed, fetchCards]);
+  }, [modalIsOpen, fetchCards]);
 
   const handleSelectCard = (index: number) => {
     setSelectedIndex(index);
@@ -202,7 +201,7 @@ const HomeScreen = ({
     setQrToken(null);
     setRedeemQrToken(null);
     setModalSuccess(null);
-    setSseFailed(false);
+    successTriggeredRef.current = false;
   };
 
   if (loading) {
