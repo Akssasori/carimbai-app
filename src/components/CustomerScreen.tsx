@@ -49,8 +49,8 @@ const HomeScreen = ({
   const [loadingQR, setLoadingQR] = useState(false);
   const [loadingRedeemQR, setLoadingRedeemQR] = useState(false);
   const [modalSuccess, setModalSuccess] = useState<'stamp' | 'redeem' | null>(null);
+  const [sseFailed, setSseFailed] = useState(false);
   const previousStampsCountRef = useRef<number>(0);
-  const pollingFallbackRef = useRef(false);
   const { permission, supported, subscribed, loading: pushLoading, subscribe: subscribePush } = usePushNotifications(customerId);
 
   const card = cards.length > 0 ? cards[selectedIndex] ?? null : null;
@@ -139,7 +139,7 @@ const HomeScreen = ({
   }, [triggerSuccess]);
 
   const handleSseConnectionFailed = useCallback(() => {
-    pollingFallbackRef.current = true;
+    setSseFailed(true);
   }, []);
 
   useCardEvents({
@@ -155,10 +155,10 @@ const HomeScreen = ({
   }, [customerId]);
 
   useEffect(() => {
-    if (!modalIsOpen || !pollingFallbackRef.current) return;
+    if (!modalIsOpen || !sseFailed) return;
     const intervalId = setInterval(() => fetchCards(true), 2000);
     return () => clearInterval(intervalId);
-  }, [modalIsOpen, fetchCards]);
+  }, [modalIsOpen, sseFailed, fetchCards]);
 
   const handleSelectCard = (index: number) => {
     setSelectedIndex(index);
@@ -202,7 +202,7 @@ const HomeScreen = ({
     setQrToken(null);
     setRedeemQrToken(null);
     setModalSuccess(null);
-    pollingFallbackRef.current = false;
+    setSseFailed(false);
   };
 
   if (loading) {
