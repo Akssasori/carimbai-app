@@ -148,10 +148,3 @@ export interface EnrollCardResponse {
   status: string;
 }
 
-export interface CardSseEvent {
-  type: 'STAMP_APPLIED' | 'REDEEMED';
-  cardId: number;
-  stampsCount: number;
-  stampsNeeded: number;
-  status: string;
-}
