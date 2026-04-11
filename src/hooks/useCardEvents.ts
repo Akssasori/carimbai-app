@@ -21,6 +21,7 @@ export function useCardEvents({
   const [connected, setConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const failedRef = useRef(false);
 
   const onStampAppliedRef = useRef(onStampApplied);
   const onRedeemedRef = useRef(onRedeemed);
@@ -45,8 +46,11 @@ export function useCardEvents({
   useEffect(() => {
     if (!enabled || cardId == null) {
       close();
+      failedRef.current = false;
       return;
     }
+
+    if (failedRef.current) return;
 
     const url = `${API_BASE_URL}/cards/${cardId}/events`;
     const es = new EventSource(url);
@@ -55,18 +59,20 @@ export function useCardEvents({
     timeoutRef.current = setTimeout(() => {
       if (es.readyState !== EventSource.OPEN) {
         es.close();
+        eventSourceRef.current = null;
         setConnected(false);
+        failedRef.current = true;
         onConnectionFailedRef.current();
       }
-    }, 3000);
+    }, 5000);
 
-    es.onopen = () => {
+    es.addEventListener('connected', () => {
       setConnected(true);
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
-    };
+    });
 
     es.addEventListener('stamp_applied', (e: MessageEvent) => {
       try {
@@ -83,9 +89,10 @@ export function useCardEvents({
     });
 
     es.onerror = () => {
-      setConnected(false);
       es.close();
       eventSourceRef.current = null;
+      setConnected(false);
+      failedRef.current = true;
       onConnectionFailedRef.current();
     };
 
