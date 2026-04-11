@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import QRCode from "react-qr-code";
 import "./CustomerScreen.css";
-import type { Card, QRTokenResponse, RedeemQrTokenResponse, CardSseEvent } from "../types";
+import type { Card, QRTokenResponse, RedeemQrTokenResponse } from "../types";
 import { apiService } from "../services/api";
 import QRCodeModal from "./QRCodeModal";
 import { usePushNotifications } from "../hooks/usePushNotifications";
-import { useCardEvents } from "../hooks/useCardEvents";
 
 interface HomeScreenProps {
   customerId: number;
@@ -122,32 +121,6 @@ const HomeScreen = ({
       fetchCards();
     }, 1800);
   }, [fetchCards]);
-
-  const handleSseStampApplied = useCallback((event: CardSseEvent) => {
-    setCards(prev => prev.map(c =>
-      c.cardId === event.cardId
-        ? { ...c, stampsCount: event.stampsCount, status: event.status as Card['status'], hasReward: event.status === 'READY_TO_REDEEM' }
-        : c
-    ));
-    triggerSuccess('stamp');
-  }, [triggerSuccess]);
-
-  const handleSseRedeemed = useCallback((event: CardSseEvent) => {
-    setCards(prev => prev.map(c =>
-      c.cardId === event.cardId
-        ? { ...c, stampsCount: event.stampsCount, status: event.status as Card['status'], hasReward: false }
-        : c
-    ));
-    triggerSuccess('redeem');
-  }, [triggerSuccess]);
-
-  useCardEvents({
-    cardId: card?.cardId ?? null,
-    enabled: modalIsOpen,
-    onStampApplied: handleSseStampApplied,
-    onRedeemed: handleSseRedeemed,
-    onConnectionFailed: () => {},
-  });
 
   useEffect(() => {
     fetchCards();
