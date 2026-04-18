@@ -99,7 +99,8 @@ class ApiService {
       throw new Error(`Erro ao inscrever cliente: ${response.status} - ${text}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    return { ...data, created: response.status === 201 };
   }
 
   // 🔹 LOGIN LIGHT DO CLIENTE

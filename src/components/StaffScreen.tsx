@@ -128,7 +128,11 @@ export default function StaffScreen() {
     setEnrollSuccess(null);
     try {
       const res = await apiService.enrollCustomer(programId, customerId);
-      setEnrollSuccess(`Cliente #${customerId} inscrito com sucesso! Card #${res.id} criado.`);
+      if (res.created) {
+        setEnrollSuccess(`Cliente #${customerId} inscrito com sucesso! Card #${res.id} criado.`);
+      } else {
+        setEnrollSuccess(`Cliente #${customerId} já estava inscrito nesta promoção. Card existente: #${res.id} (${res.stampsCount} carimbos).`);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao inscrever cliente';
       setEnrollError(message);
