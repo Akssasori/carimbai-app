@@ -7,7 +7,7 @@ import { Route, Routes, Navigate } from 'react-router-dom';
 import StaffLogin from './components/StaffLogin';
 
 function App() {
-  const { customer, loading, loginOrRegister } = useCustomer();
+  const { customer, loading, loginOrRegister, socialLogin } = useCustomer();
 
   return (
     <div className="app-container">
@@ -22,14 +22,9 @@ function App() {
               {!loading && !customer && (
                 <CustomerOnboarding
                   onSubmit={async ({ name, email, phone }) => {
-                    await loginOrRegister({
-                      name,
-                      email,
-                      phone,
-                      providerId: undefined, // depois você pode trocar por um UUID do device
-                    });
-                    // o hook atualiza `customer` e a HomeScreen aparece sozinha
+                    await loginOrRegister({ name, email, phone, providerId: undefined });
                   }}
+                  onSocialLogin={socialLogin}
                 />
               )}
 

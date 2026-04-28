@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
-import type { CustomerData, CustomerLoginRequest, CustomerLoginResponse } from '../types';
+import type { CustomerData, CustomerLoginRequest, CustomerLoginResponse, SocialProvider } from '../types';
 
 
 const STORAGE_KEY = 'carimbai_customer';
@@ -41,6 +41,17 @@ export function useCustomer() {
     return res;
   }
 
+  async function socialLogin(provider: SocialProvider, token: string): Promise<CustomerLoginResponse> {
+    const res = await apiService.socialLoginCustomer(provider, token);
+    setCustomer(res);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(res));
+    }
+
+    return res;
+  }
+
   function logout() {
     setCustomer(null);
     if (typeof window !== 'undefined') {
@@ -52,6 +63,7 @@ export function useCustomer() {
     customer,
     loading,
     loginOrRegister,
+    socialLogin,
     logout,
   };
 }

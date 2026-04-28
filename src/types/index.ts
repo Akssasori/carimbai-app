@@ -147,3 +147,10 @@ export interface EnrollCardResponse {
   stampsCount: number;
   status: string;
 }
+
+export type SocialProvider = 'GOOGLE' | 'APPLE' | 'FACEBOOK';
+
+export interface SocialLoginRequest {
+  provider: SocialProvider;
+  token: string;
+}
