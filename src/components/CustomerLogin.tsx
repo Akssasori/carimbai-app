@@ -6,7 +6,7 @@ import type { SocialProvider } from '../types';
 
 interface Props {
   onSubmit: (data: { name?: string; email?: string; phone?: string }) => Promise<void>;
-  onSocialLogin: (provider: SocialProvider, token: string) => Promise<void>;
+  onSocialLogin: (provider: SocialProvider, token: string) => Promise<unknown>;
 }
 
 export function CustomerOnboarding({ onSubmit, onSocialLogin }: Props) {
@@ -140,6 +140,7 @@ export function CustomerOnboarding({ onSubmit, onSocialLogin }: Props) {
 
             {/* Apple */}
             <AppleSignin
+              uiType="dark"
               authOptions={{
                 clientId: import.meta.env.VITE_APPLE_CLIENT_ID ?? '',
                 scope: 'email name',
@@ -181,7 +182,7 @@ export function CustomerOnboarding({ onSubmit, onSocialLogin }: Props) {
                 console.warn('Facebook login error', err);
                 setError('Erro ao entrar com Facebook');
               }}
-              render={({ onClick }: { onClick: React.MouseEventHandler<HTMLButtonElement> }) => (
+              render={({ onClick }: { onClick?: () => void }) => (
                 <button
                   onClick={onClick}
                   disabled={loading}
