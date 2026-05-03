@@ -60,7 +60,6 @@ export default function StaffScreen() {
   const processingRef = useRef(false);
   const [locationId, setLocationId] = useState<string>('1');
   const [cashierPin, setCashierPin] = useState<string>('');
-  const [activeNav, setActiveNav] = useState('scan');
   const [switchingMerchant, setSwitchingMerchant] = useState(false);
 
   const [enrollCustomerId, setEnrollCustomerId] = useState('');
@@ -129,7 +128,11 @@ export default function StaffScreen() {
     setEnrollSuccess(null);
     try {
       const res = await apiService.enrollCustomer(programId, customerId);
-      setEnrollSuccess(`Cliente #${customerId} inscrito com sucesso! Card #${res.id} criado.`);
+      if (res.created) {
+        setEnrollSuccess(`Cliente #${customerId} inscrito com sucesso! Card #${res.id} criado.`);
+      } else {
+        setEnrollSuccess(`Cliente #${customerId} já estava inscrito nesta promoção. Card existente: #${res.id} (${res.stampsCount} carimbos).`);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao inscrever cliente';
       setEnrollError(message);
@@ -220,15 +223,6 @@ export default function StaffScreen() {
       }
     };
   }, [enrollScanning]);
-
-  useEffect(() => {
-    if (activeNav !== 'users' && enrollScannerRef.current) {
-      enrollScannerRef.current.clear().catch(console.error).finally(() => {
-        enrollScannerRef.current = null;
-      });
-      setEnrollScanning(false);
-    }
-  }, [activeNav]);
 
   useEffect(() => {
     if (!session) {
@@ -447,25 +441,51 @@ export default function StaffScreen() {
     <div className="staff-layout">
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <span className="logo-icon">🎯</span>
+          <div className="logo-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="2" width="20" height="20" rx="4" />
+              <path d="M9 12l2 2 4-4" />
+            </svg>
+          </div>
         </div>
         <nav className="sidebar-nav">
-          <button className={`nav-item ${activeNav === 'home' ? 'active' : ''}`} onClick={() => setActiveNav('home')}>
-            <span className="nav-icon">🏠</span>
+          <button className="nav-item active" title="Home">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
           </button>
-          <button className={`nav-item ${activeNav === 'scan' ? 'active' : ''}`} onClick={() => setActiveNav('scan')}>
-            <span className="nav-icon">📷</span>
+          <button className="nav-item" title="Documentos">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
           </button>
-          <button className={`nav-item ${activeNav === 'users' ? 'active' : ''}`} onClick={() => setActiveNav('users')}>
-            <span className="nav-icon">👥</span>
+          <button className="nav-item" title="Clientes">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
           </button>
-          <button className={`nav-item ${activeNav === 'settings' ? 'active' : ''}`} onClick={() => setActiveNav('settings')}>
-            <span className="nav-icon">⚙️</span>
+          <button className="nav-item" title="Configurações">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
           </button>
         </nav>
         <div className="sidebar-bottom">
-          <button className="nav-item" onClick={handleLogout}>
-            <span className="nav-icon">🚪</span>
+          <button className="nav-item" onClick={handleLogout} title="Sair">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
           </button>
         </div>
       </aside>
@@ -515,220 +535,260 @@ export default function StaffScreen() {
           </div>
         </header>
 
-        {activeNav === 'users' ? (
-          <section className="enroll-section">
-            <h2>Inscrever Cliente em Promoção</h2>
-            <p className="enroll-desc">Escaneie o QR de identificação do cliente ou digite o ID manualmente</p>
-
-            {enrollError && <div className="error-message">{enrollError}</div>}
-            {enrollSuccess && <div className="enroll-success">{enrollSuccess}</div>}
-
-            {!enrollScanning && !enrollCustomerId.trim() && enrollPrograms.length === 0 && (
-              <div className="enroll-scan-area">
-                <div className="scanner-placeholder" onClick={startEnrollScan}>
-                  <div className="qr-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="3" width="7" height="7" />
-                      <rect x="14" y="3" width="7" height="7" />
-                      <rect x="3" y="14" width="7" height="7" />
-                      <rect x="14" y="14" width="3" height="3" />
-                      <rect x="18" y="14" width="3" height="3" />
-                      <rect x="14" y="18" width="3" height="3" />
-                      <rect x="18" y="18" width="3" height="3" />
-                    </svg>
-                  </div>
-                  <span>Escanear QR do Cliente</span>
-                </div>
-              </div>
-            )}
-
-            {enrollScanning && (
-              <div className="enroll-scan-area">
-                <div className="scanner-active">
-                  <div id="enroll-qr-reader"></div>
-                  <button className="btn-cancel" onClick={stopEnrollScan}>Cancelar</button>
-                </div>
-              </div>
-            )}
-
-            <div className="enroll-form">
-              <div className="enroll-divider">
-                <span>ou digite manualmente</span>
-              </div>
-              <div className="enroll-input-group">
-                <label>Customer ID:</label>
-                <input
-                  type="number"
-                  value={enrollCustomerId}
-                  onChange={e => setEnrollCustomerId(e.target.value)}
-                  placeholder="Ex: 1"
-                  min="1"
-                />
-                <button
-                  className="btn-search"
-                  onClick={handleLoadPrograms}
-                  disabled={enrollLoading || !enrollCustomerId.trim()}
-                >
-                  {enrollLoading ? 'Buscando...' : 'Buscar Promoções'}
-                </button>
-              </div>
+        <div className="stats-row">
+          <div className="stat-card">
+            <div className="stat-icon blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path d="M9 12l2 2 4-4" />
+              </svg>
             </div>
+            <div className="stat-info">
+              <span className="stat-value">{todayStamps}</span>
+              <span className="stat-label">Carimbos Hoje</span>
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon orange">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 12 20 22 4 22 4 12" />
+                <rect x="2" y="7" width="20" height="5" />
+                <line x1="12" y1="22" x2="12" y2="7" />
+                <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+                <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+              </svg>
+            </div>
+            <div className="stat-info">
+              <span className="stat-value">{todayRewards}</span>
+              <span className="stat-label">Prêmios Hoje</span>
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </div>
+            <div className="stat-info">
+              <span className="stat-value">{new Set(history.map(h => h.cardId)).size}</span>
+              <span className="stat-label">Total Clientes</span>
+            </div>
+          </div>
+        </div>
 
-            {enrollPrograms.length > 0 && (
-              <div className="enroll-programs-list">
-                <h3 className="enroll-programs-title">Cliente #{enrollCustomerId} - Escolha a promoção:</h3>
-                {enrollPrograms.map(program => (
-                  <div key={program.id} className="enroll-program-card">
-                    <div className="enroll-program-info">
-                      <h3>{program.name}</h3>
-                      {program.description && <p className="enroll-program-desc">{program.description}</p>}
-                      <div className="enroll-program-meta">
-                        <span>Carimbos: {program.ruleTotalStamps}</span>
-                        <span>Recompensa: {program.rewardName}</span>
-                        {program.category && <span>Categoria: {program.category}</span>}
-                      </div>
-                    </div>
-                    <button
-                      className="btn-enroll"
-                      onClick={() => handleEnrollCustomer(program.id)}
-                      disabled={enrollingProgramId !== null}
-                    >
-                      {enrollingProgramId === program.id ? 'Inscrevendo...' : 'Inscrever'}
-                    </button>
+        <div className="content-grid">
+          <section className="scanner-card">
+            <h2>Escanear QR Code</h2>
+            <p className="scanner-desc">Aponte a câmera para o QR Code do cliente</p>
+
+            {error && <div className="error-message">{error}</div>}
+
+            {!scanning ? (
+              <div className="scanner-placeholder" onClick={startScanning}>
+                <div className="qr-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="3" width="7" height="7" rx="1" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                    <rect x="14" y="14" width="3" height="3" />
+                    <rect x="18" y="14" width="3" height="3" />
+                    <rect x="14" y="18" width="3" height="3" />
+                    <rect x="18" y="18" width="3" height="3" />
+                  </svg>
+                </div>
+                <span>Clique para escanear</span>
+              </div>
+            ) : (
+              <div className="scanner-active">
+                <div id="qr-reader"></div>
+                <button className="btn-cancel" onClick={stopScanning}>Cancelar</button>
+              </div>
+            )}
+
+            {result && (
+              <div className={`result-card ${result.rewardEarned ? 'with-reward' : ''}`}>
+                <div className="result-header">
+                  <span className="result-status">
+                    <svg className="result-status-icon" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Carimbo Aplicado
+                  </span>
+                  <span className="result-time">{formatTimestamp(result.timestamp)}</span>
+                </div>
+                <div className="result-body">
+                  <div className="result-row">
+                    <span>Cartão</span>
+                    <strong>{result.cardId}</strong>
                   </div>
-                ))}
+                  <div className="result-row">
+                    <span>Progresso</span>
+                    <strong>{result.stampsCount}/{result.maxStamps}</strong>
+                  </div>
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${(result.stampsCount / result.maxStamps) * 100}%` }}></div>
+                  </div>
+                  {result.rewardEarned && (
+                    <div className="reward-alert">Prêmio Conquistado!</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {redeemResult && (
+              <div className="result-card with-reward">
+                <div className="result-header">
+                  <span className="result-status redeem">
+                    <svg className="result-status-icon" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5 5a3 3 0 015-2.236A3 3 0 0114.83 6H16a2 2 0 110 4h-5V9a1 1 0 10-2 0v1H4a2 2 0 110-4h1.17A3 3 0 015 5zm4 1V5a1 1 0 10-1 1h1zm2 0a1 1 0 10-1-1v1h1z" clipRule="evenodd" />
+                      <path d="M9 11H3v5a2 2 0 002 2h4v-7zM11 18h4a2 2 0 002-2v-5h-6v7z" />
+                    </svg>
+                    Recompensa Resgatada
+                  </span>
+                  <span className="result-time">{formatTimestamp(redeemResult.timestamp)}</span>
+                </div>
+                <div className="result-body">
+                  <div className="result-row">
+                    <span>Cartão</span>
+                    <strong>{redeemResult.cardId}</strong>
+                  </div>
+                  <div className="reward-alert">Resgate confirmado com sucesso!</div>
+                </div>
               </div>
             )}
           </section>
-        ) : (
-          <>
-            <div className="stats-row">
-              <div className="stat-card">
-                <div className="stat-icon blue">📋</div>
-                <div className="stat-info">
-                  <span className="stat-value">{todayStamps}</span>
-                  <span className="stat-label">Carimbos Hoje</span>
-                </div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-icon orange">🎁</div>
-                <div className="stat-info">
-                  <span className="stat-value">{todayRewards}</span>
-                  <span className="stat-label">Prêmios Hoje</span>
-                </div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-icon green">👤</div>
-                <div className="stat-info">
-                  <span className="stat-value">{new Set(history.map(h => h.cardId)).size}</span>
-                  <span className="stat-label">Total Clientes</span>
-                </div>
-              </div>
+
+          <section className="activity-card">
+            <div className="activity-header">
+              <h2>Atividade Recente</h2>
+              <span className="activity-count">{history.length} registros</span>
             </div>
-
-            <div className="content-grid">
-              <section className="scanner-card">
-                <h2>Escanear QR Code</h2>
-                <p className="scanner-desc">Aponte a câmera para o QR Code do cliente</p>
-
-                {error && <div className="error-message">{error}</div>}
-
-                {!scanning ? (
-                  <div className="scanner-placeholder" onClick={startScanning}>
-                    <div className="qr-icon">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="3" y="3" width="7" height="7" />
-                        <rect x="14" y="3" width="7" height="7" />
-                        <rect x="3" y="14" width="7" height="7" />
-                        <rect x="14" y="14" width="3" height="3" />
-                        <rect x="18" y="14" width="3" height="3" />
-                        <rect x="14" y="18" width="3" height="3" />
-                        <rect x="18" y="18" width="3" height="3" />
-                      </svg>
-                    </div>
-                    <span>Clique para escanear</span>
-                  </div>
-                ) : (
-                  <div className="scanner-active">
-                    <div id="qr-reader"></div>
-                    <button className="btn-cancel" onClick={stopScanning}>Cancelar</button>
-                  </div>
-                )}
-
-                {result && (
-                  <div className={`result-card ${result.rewardEarned ? 'with-reward' : ''}`}>
-                    <div className="result-header">
-                      <span className="result-status">✅ Carimbo Aplicado</span>
-                      <span className="result-time">{formatTimestamp(result.timestamp)}</span>
-                    </div>
-                    <div className="result-body">
-                      <div className="result-row">
-                        <span>Cartão</span>
-                        <strong>{result.cardId}</strong>
-                      </div>
-                      <div className="result-row">
-                        <span>Progresso</span>
-                        <strong>{result.stampsCount}/{result.maxStamps}</strong>
-                      </div>
-                      <div className="progress-bar">
-                        <div className="progress-fill" style={{ width: `${(result.stampsCount / result.maxStamps) * 100}%` }}></div>
-                      </div>
-                      {result.rewardEarned && (
-                        <div className="reward-alert">🎉 Prêmio Conquistado!</div>
+            <div className="activity-list">
+              {history.length === 0 ? (
+                <div className="empty-state">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="empty-state-icon">
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                    <path d="M2 8h20" />
+                    <path d="M9 14h6" />
+                  </svg>
+                  <p>Nenhuma atividade ainda</p>
+                </div>
+              ) : (
+                history.slice(0, 10).map((item) => (
+                  <div key={item.id} className="activity-item">
+                    <div className={`activity-icon ${item.type === 'redeem' || item.rewardEarned ? 'reward' : 'stamp'}`}>
+                      {item.type === 'redeem' || item.rewardEarned ? (
+                        <svg viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M5 5a3 3 0 015-2.236A3 3 0 0114.83 6H16a2 2 0 110 4h-5V9a1 1 0 10-2 0v1H4a2 2 0 110-4h1.17A3 3 0 015 5zm4 1V5a1 1 0 10-1 1h1zm2 0a1 1 0 10-1-1v1h1z" clipRule="evenodd" />
+                          <path d="M9 11H3v5a2 2 0 002 2h4v-7zM11 18h4a2 2 0 002-2v-5h-6v7z" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
                       )}
                     </div>
+                    <div className="activity-info">
+                      <span className="activity-title">Cartão #{item.cardId}</span>
+                      <span className="activity-meta">
+                        {item.type === 'redeem'
+                          ? 'Prêmio Resgatado'
+                          : `${item.stampsCount}/${item.maxStamps} carimbos`}
+                      </span>
+                    </div>
+                    <span className="activity-time">{formatTimestamp(item.timestamp)}</span>
                   </div>
-                )}
-
-                {redeemResult && (
-                  <div className="result-card with-reward">
-                    <div className="result-header">
-                      <span className="result-status">🎁 Recompensa Resgatada</span>
-                      <span className="result-time">{formatTimestamp(redeemResult.timestamp)}</span>
-                    </div>
-                    <div className="result-body">
-                      <div className="result-row">
-                        <span>Cartão</span>
-                        <strong>{redeemResult.cardId}</strong>
-                      </div>
-                      <div className="reward-alert">✅ Resgate confirmado com sucesso!</div>
-                    </div>
-                  </div>
-                )}
-              </section>
-
-              <section className="activity-card">
-                <div className="activity-header">
-                  <h2>Atividade Recente</h2>
-                  <span className="activity-count">{history.length} registros</span>
-                </div>
-                <div className="activity-list">
-                  {history.length === 0 ? (
-                    <div className="empty-state">
-                      <span>📭</span>
-                      <p>Nenhuma atividade ainda</p>
-                    </div>
-                  ) : (
-                    history.slice(0, 10).map((item) => (
-                      <div key={item.id} className="activity-item">
-                        <div className="activity-icon">{item.type === 'redeem' ? '🎁' : item.rewardEarned ? '🎁' : '✓'}</div>
-                        <div className="activity-info">
-                          <span className="activity-title">Cartão #{item.cardId}</span>
-                          <span className="activity-meta">
-                            {item.type === 'redeem'
-                              ? 'Recompensa resgatada'
-                              : `${item.stampsCount}/${item.maxStamps} carimbos`}
-                          </span>
-                        </div>
-                        <span className="activity-time">{formatTimestamp(item.timestamp)}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </section>
+                ))
+              )}
             </div>
-          </>
-        )}
+          </section>
+        </div>
+
+        <section className="enroll-section">
+          <h2>Inscrever Cliente em Promoção</h2>
+          <p className="enroll-desc">Escaneie o QR de identificação do cliente ou digite o ID manualmente</p>
+
+          {enrollError && <div className="error-message">{enrollError}</div>}
+          {enrollSuccess && <div className="enroll-success">{enrollSuccess}</div>}
+
+          {!enrollScanning && !enrollCustomerId.trim() && enrollPrograms.length === 0 && (
+            <div className="enroll-scan-area">
+              <div className="scanner-placeholder" onClick={startEnrollScan}>
+                <div className="qr-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="3" width="7" height="7" rx="1" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                    <rect x="14" y="14" width="3" height="3" />
+                    <rect x="18" y="14" width="3" height="3" />
+                    <rect x="14" y="18" width="3" height="3" />
+                    <rect x="18" y="18" width="3" height="3" />
+                  </svg>
+                </div>
+                <span>Escanear QR do Cliente</span>
+              </div>
+            </div>
+          )}
+
+          {enrollScanning && (
+            <div className="enroll-scan-area">
+              <div className="scanner-active">
+                <div id="enroll-qr-reader"></div>
+                <button className="btn-cancel" onClick={stopEnrollScan}>Cancelar</button>
+              </div>
+            </div>
+          )}
+
+          <div className="enroll-form">
+            <div className="enroll-divider">
+              <span>ou digite manualmente</span>
+            </div>
+            <div className="enroll-input-group">
+              <label>Customer ID:</label>
+              <input
+                type="number"
+                value={enrollCustomerId}
+                onChange={e => setEnrollCustomerId(e.target.value)}
+                placeholder="Ex: 1"
+                min="1"
+              />
+              <button
+                className="btn-search"
+                onClick={handleLoadPrograms}
+                disabled={enrollLoading || !enrollCustomerId.trim()}
+              >
+                {enrollLoading ? 'Buscando...' : 'Buscar Promoções'}
+              </button>
+            </div>
+          </div>
+
+          {enrollPrograms.length > 0 && (
+            <div className="enroll-programs-list">
+              <h3 className="enroll-programs-title">Cliente #{enrollCustomerId} - Escolha a promoção:</h3>
+              {enrollPrograms.map(program => (
+                <div key={program.id} className="enroll-program-card">
+                  <div className="enroll-program-info">
+                    <h3>{program.name}</h3>
+                    {program.description && <p className="enroll-program-desc">{program.description}</p>}
+                    <div className="enroll-program-meta">
+                      <span>Carimbos: {program.ruleTotalStamps}</span>
+                      <span>Recompensa: {program.rewardName}</span>
+                      {program.category && <span>Categoria: {program.category}</span>}
+                    </div>
+                  </div>
+                  <button
+                    className="btn-enroll"
+                    onClick={() => handleEnrollCustomer(program.id)}
+                    disabled={enrollingProgramId !== null}
+                  >
+                    {enrollingProgramId === program.id ? 'Inscrevendo...' : 'Inscrever'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </main>
     </div>
   );
