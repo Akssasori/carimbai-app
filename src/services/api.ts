@@ -1,4 +1,4 @@
-import type { CustomerCardsResponse, QRTokenResponse, StampRequest, StampResponse, CustomerLoginRequest, CustomerLoginResponse, StaffLoginResponse, RedeemRequest, RedeemResponse, RedeemQrTokenResponse, RedeemQrRequest, ProgramItem, EnrollCardResponse } from '../types';
+import type { CustomerCardsResponse, QRTokenResponse, StampRequest, StampResponse, CustomerLoginRequest, CustomerLoginResponse, StaffLoginResponse, RedeemRequest, RedeemResponse, RedeemQrTokenResponse, RedeemQrRequest, ProgramItem, EnrollCardResponse, SocialProvider } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||'http://localhost:1234/api';
 
@@ -101,6 +101,24 @@ class ApiService {
 
     const data = await response.json();
     return { ...data, created: response.status === 201 };
+  }
+
+  async socialLoginCustomer(provider: SocialProvider, token: string): Promise<CustomerLoginResponse> {
+    const response = await fetch(`${this.baseUrl}/customers/social-login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ provider, token }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Erro ao autenticar via ${provider}: ${response.status} - ${errorText}`);
+    }
+
+    return response.json();
   }
 
   // 🔹 LOGIN LIGHT DO CLIENTE

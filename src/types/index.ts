@@ -149,3 +149,9 @@ export interface EnrollCardResponse {
   created: boolean;
 }
 
+export type SocialProvider = 'GOOGLE' | 'APPLE' | 'FACEBOOK';
+
+export interface SocialLoginRequest {
+  provider: SocialProvider;
+  token: string;
+}
