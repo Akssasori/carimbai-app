@@ -146,6 +146,7 @@ export interface EnrollCardResponse {
   customerId: number;
   stampsCount: number;
   status: string;
+  created: boolean;
 }
 
 export type SocialProvider = 'GOOGLE' | 'APPLE' | 'FACEBOOK';

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import QRCode from "react-qr-code";
 import "./CustomerScreen.css";
 import type { Card, QRTokenResponse, RedeemQrTokenResponse } from "../types";
@@ -47,36 +47,48 @@ const HomeScreen = ({
   const [redeemQrToken, setRedeemQrToken] = useState<RedeemQrTokenResponse | null>(null);
   const [loadingQR, setLoadingQR] = useState(false);
   const [loadingRedeemQR, setLoadingRedeemQR] = useState(false);
+  const [modalSuccess, setModalSuccess] = useState<'stamp' | 'redeem' | null>(null);
   const previousStampsCountRef = useRef<number>(0);
+  const successTriggeredRef = useRef(false);
   const { permission, supported, subscribed, loading: pushLoading, subscribe: subscribePush } = usePushNotifications(customerId);
 
   const card = cards.length > 0 ? cards[selectedIndex] ?? null : null;
+  const cardRef = useRef(card);
+  cardRef.current = card;
+  const qrTokenRef = useRef(qrToken);
+  qrTokenRef.current = qrToken;
+  const redeemQrTokenRef = useRef(redeemQrToken);
+  redeemQrTokenRef.current = redeemQrToken;
 
   const avatarInitial = customerEmail
     ? customerEmail.charAt(0).toUpperCase()
     : customerName.charAt(0).toUpperCase();
 
-  const fetchCards = async (isPolling = false) => {
+  const modalIsOpen = !!(qrToken || redeemQrToken);
+
+  const fetchCards = useCallback(async (isPolling = false) => {
     try {
       if (!isPolling) setLoading(true);
       const response = await apiService.getCustomerCards(customerId);
 
       if (response.cards && response.cards.length > 0) {
         const updatedCards = response.cards;
+        const currentCard = cardRef.current;
 
-        if (isPolling && card) {
-          const updatedCurrent = updatedCards.find(c => c.cardId === card.cardId);
+        if (isPolling && currentCard) {
+          const updatedCurrent = updatedCards.find(c => c.cardId === currentCard.cardId);
           if (updatedCurrent) {
-            if (qrToken && previousStampsCountRef.current > 0 && updatedCurrent.stampsCount > previousStampsCountRef.current) {
-              setQrToken(null);
+            if (qrTokenRef.current && previousStampsCountRef.current > 0 && updatedCurrent.stampsCount > previousStampsCountRef.current) {
+              triggerSuccess('stamp');
             }
-            if (redeemQrToken && updatedCurrent.status === 'ACTIVE' && updatedCurrent.stampsCount === 0) {
-              setRedeemQrToken(null);
+            if (redeemQrTokenRef.current && updatedCurrent.status === 'ACTIVE' && updatedCurrent.stampsCount === 0) {
+              triggerSuccess('redeem');
             }
             previousStampsCountRef.current = updatedCurrent.stampsCount;
           }
         } else if (!isPolling && updatedCards.length > 0) {
-          previousStampsCountRef.current = updatedCards[0].stampsCount;
+          const idx = selectedIndex < updatedCards.length ? selectedIndex : 0;
+          previousStampsCountRef.current = updatedCards[idx].stampsCount;
         }
 
         setCards(updatedCards);
@@ -95,23 +107,30 @@ const HomeScreen = ({
     } finally {
       if (!isPolling) setLoading(false);
     }
-  };
+  }, [customerId, selectedIndex]);
+
+  const triggerSuccess = useCallback((type: 'stamp' | 'redeem') => {
+    if (successTriggeredRef.current) return;
+    successTriggeredRef.current = true;
+    setModalSuccess(type);
+    setTimeout(() => {
+      setQrToken(null);
+      setRedeemQrToken(null);
+      setModalSuccess(null);
+      successTriggeredRef.current = false;
+      fetchCards();
+    }, 1800);
+  }, [fetchCards]);
 
   useEffect(() => {
     fetchCards();
   }, [customerId]);
 
   useEffect(() => {
-    if (!qrToken) return;
-    const intervalId = setInterval(() => fetchCards(true), 2000);
+    if (!modalIsOpen) return;
+    const intervalId = setInterval(() => fetchCards(true), 3000);
     return () => clearInterval(intervalId);
-  }, [qrToken, customerId]);
-
-  useEffect(() => {
-    if (!redeemQrToken) return;
-    const intervalId = setInterval(() => fetchCards(true), 2000);
-    return () => clearInterval(intervalId);
-  }, [redeemQrToken, customerId]);
+  }, [modalIsOpen, fetchCards]);
 
   const handleSelectCard = (index: number) => {
     setSelectedIndex(index);
@@ -154,6 +173,8 @@ const HomeScreen = ({
   const handleCloseQR = () => {
     setQrToken(null);
     setRedeemQrToken(null);
+    setModalSuccess(null);
+    successTriggeredRef.current = false;
   };
 
   if (loading) {
@@ -336,7 +357,7 @@ const HomeScreen = ({
         )}
       </main>
 
-      <QRCodeModal qrToken={qrToken} redeemQrToken={redeemQrToken} onClose={handleCloseQR} />
+      <QRCodeModal qrToken={qrToken} redeemQrToken={redeemQrToken} onClose={handleCloseQR} successType={modalSuccess} />
     </div>
   );
 };

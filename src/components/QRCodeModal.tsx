@@ -7,6 +7,7 @@ interface QRCodeModalProps {
   qrToken: QRTokenResponse | null;
   redeemQrToken?: RedeemQrTokenResponse | null;
   onClose: () => void;
+  successType?: 'stamp' | 'redeem' | null;
 }
 
 const TimerIcon = () => (
@@ -17,7 +18,14 @@ const TimerIcon = () => (
   </svg>
 );
 
-const QRCodeModal = ({ qrToken, redeemQrToken, onClose }: QRCodeModalProps) => {
+const SuccessCheck = () => (
+  <svg className="success-check-icon" viewBox="0 0 52 52" fill="none">
+    <circle className="success-circle" cx="26" cy="26" r="24" stroke="#22c55e" strokeWidth="3" fill="none" />
+    <path className="success-tick" d="M15 27l7 7 15-15" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+  </svg>
+);
+
+const QRCodeModal = ({ qrToken, redeemQrToken, onClose, successType }: QRCodeModalProps) => {
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -30,6 +38,26 @@ const QRCodeModal = ({ qrToken, redeemQrToken, onClose }: QRCodeModalProps) => {
   }, []);
 
   if (!qrToken && !redeemQrToken) return null;
+
+  if (successType) {
+    return (
+      <div className="qr-modal-overlay">
+        <div className="qr-modal-content qr-modal-success">
+          <div className="success-animation">
+            <SuccessCheck />
+            <h2 className="success-title">
+              {successType === 'stamp' ? 'Carimbo adicionado!' : 'Recompensa resgatada!'}
+            </h2>
+            <p className="success-subtitle">
+              {successType === 'stamp'
+                ? 'Seu carimbo foi registrado com sucesso'
+                : 'Parabéns! Aproveite sua recompensa'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const isRedeem = !!redeemQrToken;
 
