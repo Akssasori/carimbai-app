@@ -155,3 +155,43 @@ export interface SocialLoginRequest {
   provider: SocialProvider;
   token: string;
 }
+
+export interface DashboardMetrics {
+  stampsToday: number;
+  rewardsToday: number;
+  totalCustomers: number;
+  generatedAt: string;
+}
+
+export interface RecentStampItem {
+  id: number;
+  cardId: number;
+  customerId: number;
+  customerName: string | null;
+  programName: string;
+  stampsCount: number;
+  stampsNeeded: number;
+  cashierEmail: string | null;
+  locationName: string | null;
+  whenAt: string;
+}
+
+export interface RecentRewardItem {
+  id: number;
+  cardId: number;
+  customerId: number;
+  customerName: string | null;
+  programName: string;
+  rewardName: string;
+  cashierEmail: string | null;
+  locationName: string | null;
+  issuedAt: string;
+}
+
+export interface RecentStampsResponse {
+  items: RecentStampItem[];
+}
+
+export interface RecentRewardsResponse {
+  items: RecentRewardItem[];
+}

@@ -1,4 +1,4 @@
-import type { CustomerCardsResponse, QRTokenResponse, StampRequest, StampResponse, CustomerLoginRequest, CustomerLoginResponse, StaffLoginResponse, RedeemRequest, RedeemResponse, RedeemQrTokenResponse, RedeemQrRequest, ProgramItem, EnrollCardResponse, SocialProvider } from '../types';
+import type { CustomerCardsResponse, QRTokenResponse, StampRequest, StampResponse, CustomerLoginRequest, CustomerLoginResponse, StaffLoginResponse, RedeemRequest, RedeemResponse, RedeemQrTokenResponse, RedeemQrRequest, ProgramItem, EnrollCardResponse, SocialProvider, DashboardMetrics, RecentStampItem, RecentRewardItem, RecentStampsResponse, RecentRewardsResponse } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||'http://localhost:1234/api';
 
@@ -232,6 +232,56 @@ class ApiService {
     }
 
     return response.json();
+  }
+
+  async getStaffDashboardMetrics(token: string): Promise<DashboardMetrics> {
+    const response = await fetch(`${this.baseUrl}/staff/dashboard/metrics`, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao buscar métricas: ${response.status} - ${text}`);
+    }
+
+    return response.json();
+  }
+
+  async getRecentStamps(token: string, limit = 10): Promise<RecentStampItem[]> {
+    const response = await fetch(`${this.baseUrl}/staff/stamps/recent?limit=${limit}`, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao buscar carimbos recentes: ${response.status} - ${text}`);
+    }
+
+    const data: RecentStampsResponse = await response.json();
+    return data.items;
+  }
+
+  async getRecentRewards(token: string, limit = 10): Promise<RecentRewardItem[]> {
+    const response = await fetch(`${this.baseUrl}/staff/rewards/recent?limit=${limit}`, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao buscar prêmios recentes: ${response.status} - ${text}`);
+    }
+
+    const data: RecentRewardsResponse = await response.json();
+    return data.items;
   }
 
   async getVapidPublicKey(): Promise<{ publicKey: string }> {

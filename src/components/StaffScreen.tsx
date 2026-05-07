@@ -3,7 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { apiService } from '../services/api';
 import './StaffScreen.css';
-import type { QRCodeData, MerchantInfo, ProgramItem } from '../types';
+import type { QRCodeData, MerchantInfo, ProgramItem, DashboardMetrics, RecentStampItem, RecentRewardItem } from '../types';
+
+type FeedItem =
+  | { kind: 'stamp'; timestamp: string; data: RecentStampItem }
+  | { kind: 'reward'; timestamp: string; data: RecentRewardItem };
 
 interface StampResult {
   cardId: string;
@@ -15,16 +19,6 @@ interface StampResult {
 
 interface RedeemResult {
   cardId: string;
-  timestamp: string;
-}
-
-interface HistoryItem {
-  id: string;
-  type: 'stamp' | 'redeem';
-  cardId: string;
-  stampsCount?: number;
-  maxStamps?: number;
-  rewardEarned: boolean;
   timestamp: string;
 }
 
@@ -55,7 +49,9 @@ export default function StaffScreen() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<StampResult | null>(null);
   const [redeemResult, setRedeemResult] = useState<RedeemResult | null>(null);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [recentStamps, setRecentStamps] = useState<RecentStampItem[]>([]);
+  const [recentRewards, setRecentRewards] = useState<RecentRewardItem[]>([]);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const processingRef = useRef(false);
   const [locationId, setLocationId] = useState<string>('1');
@@ -230,6 +226,28 @@ export default function StaffScreen() {
     }
   }, [session, navigate]);
 
+  const refreshDashboard = async () => {
+    if (!session) return;
+    try {
+      const [m, stamps, rewards] = await Promise.all([
+        apiService.getStaffDashboardMetrics(session.token),
+        apiService.getRecentStamps(session.token, 10),
+        apiService.getRecentRewards(session.token, 10),
+      ]);
+      setMetrics(m);
+      setRecentStamps(stamps);
+      setRecentRewards(rewards);
+    } catch (err) {
+      console.error('Erro ao atualizar dashboard:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (!session) return;
+    refreshDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.token, session?.merchantId]);
+
   function handleLogout() {
     setSession(null);
     localStorage.removeItem(STAFF_STORAGE_KEY);
@@ -355,13 +373,8 @@ export default function StaffScreen() {
         timestamp: nowIso,
       };
       setResult(stampResult);
-      const historyItem: HistoryItem = {
-        ...stampResult,
-        type: 'stamp',
-        id: `${response.cardId}-${Date.now()}`,
-      };
-      setHistory((prev) => [historyItem, ...prev]);
       setError(null);
+      refreshDashboard();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao processar carimbo';
       setError(message);
@@ -404,15 +417,8 @@ export default function StaffScreen() {
         timestamp: nowIso,
       };
       setRedeemResult(redeemRes);
-      const historyItem: HistoryItem = {
-        id: `redeem-${payload.cardId}-${Date.now()}`,
-        type: 'redeem',
-        cardId: redeemRes.cardId,
-        rewardEarned: true,
-        timestamp: nowIso,
-      };
-      setHistory((prev) => [historyItem, ...prev]);
       setError(null);
+      refreshDashboard();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao resgatar recompensa';
       setError(message);
@@ -423,15 +429,12 @@ export default function StaffScreen() {
     return new Date(timestamp).toLocaleString('pt-BR');
   };
 
-  const todayStamps = history.filter(h => {
-    const today = new Date().toDateString();
-    return new Date(h.timestamp).toDateString() === today;
-  }).length;
-
-  const todayRewards = history.filter(h => {
-    const today = new Date().toDateString();
-    return new Date(h.timestamp).toDateString() === today && h.rewardEarned;
-  }).length;
+  const feed: FeedItem[] = [
+    ...recentStamps.map<FeedItem>((s) => ({ kind: 'stamp', timestamp: s.whenAt, data: s })),
+    ...recentRewards.map<FeedItem>((r) => ({ kind: 'reward', timestamp: r.issuedAt, data: r })),
+  ]
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 10);
 
   if (!session) {
     return null;
@@ -544,7 +547,7 @@ export default function StaffScreen() {
               </svg>
             </div>
             <div className="stat-info">
-              <span className="stat-value">{todayStamps}</span>
+              <span className="stat-value">{metrics?.stampsToday ?? '—'}</span>
               <span className="stat-label">Carimbos Hoje</span>
             </div>
           </div>
@@ -559,7 +562,7 @@ export default function StaffScreen() {
               </svg>
             </div>
             <div className="stat-info">
-              <span className="stat-value">{todayRewards}</span>
+              <span className="stat-value">{metrics?.rewardsToday ?? '—'}</span>
               <span className="stat-label">Prêmios Hoje</span>
             </div>
           </div>
@@ -571,7 +574,7 @@ export default function StaffScreen() {
               </svg>
             </div>
             <div className="stat-info">
-              <span className="stat-value">{new Set(history.map(h => h.cardId)).size}</span>
+              <span className="stat-value">{metrics?.totalCustomers ?? '—'}</span>
               <span className="stat-label">Total Clientes</span>
             </div>
           </div>
@@ -662,10 +665,10 @@ export default function StaffScreen() {
           <section className="activity-card">
             <div className="activity-header">
               <h2>Atividade Recente</h2>
-              <span className="activity-count">{history.length} registros</span>
+              <span className="activity-count">{feed.length} registros</span>
             </div>
             <div className="activity-list">
-              {history.length === 0 ? (
+              {feed.length === 0 ? (
                 <div className="empty-state">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="empty-state-icon">
                     <rect x="2" y="4" width="20" height="16" rx="2" />
@@ -675,31 +678,36 @@ export default function StaffScreen() {
                   <p>Nenhuma atividade ainda</p>
                 </div>
               ) : (
-                history.slice(0, 10).map((item) => (
-                  <div key={item.id} className="activity-item">
-                    <div className={`activity-icon ${item.type === 'redeem' || item.rewardEarned ? 'reward' : 'stamp'}`}>
-                      {item.type === 'redeem' || item.rewardEarned ? (
-                        <svg viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M5 5a3 3 0 015-2.236A3 3 0 0114.83 6H16a2 2 0 110 4h-5V9a1 1 0 10-2 0v1H4a2 2 0 110-4h1.17A3 3 0 015 5zm4 1V5a1 1 0 10-1 1h1zm2 0a1 1 0 10-1-1v1h1z" clipRule="evenodd" />
-                          <path d="M9 11H3v5a2 2 0 002 2h4v-7zM11 18h4a2 2 0 002-2v-5h-6v7z" />
-                        </svg>
-                      ) : (
-                        <svg viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
+                feed.map((item) => {
+                  const isReward = item.kind === 'reward';
+                  const cardId = item.data.cardId;
+                  const customerLabel = item.data.customerName ?? `Cliente #${item.data.customerId}`;
+                  const meta = isReward
+                    ? `Prêmio: ${item.data.rewardName}`
+                    : `${item.data.stampsCount}/${item.data.stampsNeeded} carimbos`;
+                  const key = `${item.kind}-${item.data.id}`;
+                  return (
+                    <div key={key} className="activity-item">
+                      <div className={`activity-icon ${isReward ? 'reward' : 'stamp'}`}>
+                        {isReward ? (
+                          <svg viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M5 5a3 3 0 015-2.236A3 3 0 0114.83 6H16a2 2 0 110 4h-5V9a1 1 0 10-2 0v1H4a2 2 0 110-4h1.17A3 3 0 015 5zm4 1V5a1 1 0 10-1 1h1zm2 0a1 1 0 10-1-1v1h1z" clipRule="evenodd" />
+                            <path d="M9 11H3v5a2 2 0 002 2h4v-7zM11 18h4a2 2 0 002-2v-5h-6v7z" />
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="activity-info">
+                        <span className="activity-title">{customerLabel} • Cartão #{cardId}</span>
+                        <span className="activity-meta">{meta}</span>
+                      </div>
+                      <span className="activity-time">{formatTimestamp(item.timestamp)}</span>
                     </div>
-                    <div className="activity-info">
-                      <span className="activity-title">Cartão #{item.cardId}</span>
-                      <span className="activity-meta">
-                        {item.type === 'redeem'
-                          ? 'Prêmio Resgatado'
-                          : `${item.stampsCount}/${item.maxStamps} carimbos`}
-                      </span>
-                    </div>
-                    <span className="activity-time">{formatTimestamp(item.timestamp)}</span>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </section>
