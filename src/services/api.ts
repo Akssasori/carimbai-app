@@ -84,12 +84,13 @@ class ApiService {
     return response.json();
   }
 
-  async enrollCustomer(programId: number, customerId: number): Promise<EnrollCardResponse> {
+  async enrollCustomer(programId: number, customerId: number, token: string): Promise<EnrollCardResponse> {
     const response = await fetch(`${this.baseUrl}/cards`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({ programId, customerId }),
     });
@@ -140,23 +141,33 @@ class ApiService {
     return response.json();
   }
 
-  async getCustomerCards(customerId: number): Promise<CustomerCardsResponse> {
-    const response = await fetch(`${this.baseUrl}/cards/customer/${customerId}`);
-    
+  async getCustomerCards(customerId: number, token: string): Promise<CustomerCardsResponse> {
+    const response = await fetch(`${this.baseUrl}/cards/customer/${customerId}`, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
     if (!response.ok) {
       throw new Error(`Erro ao buscar cartões: ${response.statusText}`);
     }
-    
+
     return response.json();
   }
 
-  async getCardQR(cardId: number): Promise<QRTokenResponse> {
-    const response = await fetch(`${this.baseUrl}/qr/${cardId}`);
-    
+  async getCardQR(cardId: number, token: string): Promise<QRTokenResponse> {
+    const response = await fetch(`${this.baseUrl}/qr/${cardId}`, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
     if (!response.ok) {
       throw new Error(`Erro ao gerar QR Code: ${response.statusText}`);
     }
-    
+
     return response.json();
   }
 
@@ -194,8 +205,13 @@ class ApiService {
     return response.json();
   }
 
-  async getRedeemQR(cardId: number): Promise<RedeemQrTokenResponse> {
-    const response = await fetch(`${this.baseUrl}/cards/${cardId}/redeem-qr`);
+  async getRedeemQR(cardId: number, token: string): Promise<RedeemQrTokenResponse> {
+    const response = await fetch(`${this.baseUrl}/cards/${cardId}/redeem-qr`, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
 
     if (!response.ok) {
       const errorText = await response.text();

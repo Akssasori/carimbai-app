@@ -33,6 +33,7 @@ function App() {
                   customerId={customer.customerId}
                   customerName={customer.name ?? 'Cliente'}
                   customerEmail={customer.email}
+                  customerToken={customer.token}
                 />
               )}
             </>

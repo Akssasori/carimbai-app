@@ -119,11 +119,15 @@ export default function StaffScreen() {
       setEnrollError('Informe um Customer ID válido.');
       return;
     }
+    if (!session) {
+      setEnrollError('Sessão expirada. Faça login novamente.');
+      return;
+    }
     setEnrollingProgramId(programId);
     setEnrollError(null);
     setEnrollSuccess(null);
     try {
-      const res = await apiService.enrollCustomer(programId, customerId);
+      const res = await apiService.enrollCustomer(programId, customerId, session.token);
       if (res.created) {
         setEnrollSuccess(`Cliente #${customerId} inscrito com sucesso! Card #${res.id} criado.`);
       } else {
