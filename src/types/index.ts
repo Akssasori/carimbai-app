@@ -49,6 +49,7 @@ export interface CustomerData {
   phone?: string;
   providerId?: string;
   created: boolean;
+  token: string;
 }
 
 export interface CustomerLoginRequest {
@@ -65,6 +66,7 @@ export interface CustomerLoginResponse {
   phone?: string;
   providerId?: string;
   created: boolean;
+  token: string;
 }
 
 export interface MerchantInfo {

@@ -10,6 +10,7 @@ interface HomeScreenProps {
   customerId: number;
   customerName?: string;
   customerEmail?: string;
+  customerToken: string;
 }
 
 const StampCheckSvg = () => (
@@ -38,6 +39,7 @@ const HomeScreen = ({
   customerId,
   customerName = "Cliente",
   customerEmail,
+  customerToken,
 }: HomeScreenProps) => {
   const [cards, setCards] = useState<Card[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -69,7 +71,7 @@ const HomeScreen = ({
   const fetchCards = useCallback(async (isPolling = false) => {
     try {
       if (!isPolling) setLoading(true);
-      const response = await apiService.getCustomerCards(customerId);
+      const response = await apiService.getCustomerCards(customerId, customerToken);
 
       if (response.cards && response.cards.length > 0) {
         const updatedCards = response.cards;
@@ -107,7 +109,7 @@ const HomeScreen = ({
     } finally {
       if (!isPolling) setLoading(false);
     }
-  }, [customerId, selectedIndex]);
+  }, [customerId, customerToken, selectedIndex]);
 
   const triggerSuccess = useCallback((type: 'stamp' | 'redeem') => {
     if (successTriggeredRef.current) return;
@@ -146,7 +148,7 @@ const HomeScreen = ({
     if (!card) return;
     try {
       setLoadingQR(true);
-      const token = await apiService.getCardQR(card.cardId);
+      const token = await apiService.getCardQR(card.cardId, customerToken);
       setQrToken(token);
     } catch (err) {
       console.error("Erro ao gerar QR Code:", err);
@@ -160,7 +162,7 @@ const HomeScreen = ({
     if (!card) return;
     try {
       setLoadingRedeemQR(true);
-      const token = await apiService.getRedeemQR(card.cardId);
+      const token = await apiService.getRedeemQR(card.cardId, customerToken);
       setRedeemQrToken(token);
     } catch (err) {
       console.error("Erro ao gerar QR de resgate:", err);
