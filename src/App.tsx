@@ -7,7 +7,7 @@ import { Route, Routes, Navigate } from 'react-router-dom';
 import StaffLogin from './components/StaffLogin';
 
 function App() {
-  const { customer, loading, loginOrRegister, socialLogin } = useCustomer();
+  const { customer, loading, loginOrRegister, socialLogin, logout } = useCustomer();
 
   return (
     <div className="app-container">
@@ -34,6 +34,7 @@ function App() {
                   customerName={customer.name ?? 'Cliente'}
                   customerEmail={customer.email}
                   customerToken={customer.token}
+                  onLogout={logout}
                 />
               )}
             </>

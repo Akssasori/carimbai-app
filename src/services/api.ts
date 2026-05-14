@@ -2,6 +2,29 @@ import type { CustomerCardsResponse, QRTokenResponse, StampRequest, StampRespons
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||'http://localhost:1234/api';
 
+const STAFF_STORAGE_KEY = 'carimbai_staff_session';
+const CUSTOMER_STORAGE_KEY = 'carimbai_customer';
+
+type SessionKind = 'staff' | 'customer';
+
+/**
+ * Em 401, limpa a sessao correspondente do localStorage e redireciona para o login.
+ * Lanca uma Error para abortar o fluxo no chamador. Para 403, nao redireciona porque
+ * 403 e um ownership violation legitimo (usuario logado, mas sem permissao naquele recurso).
+ */
+function handleUnauthorized(response: Response, kind: SessionKind): void {
+  if (response.status !== 401) return;
+
+  if (kind === 'staff') {
+    localStorage.removeItem(STAFF_STORAGE_KEY);
+    window.location.replace('/staff');
+  } else {
+    localStorage.removeItem(CUSTOMER_STORAGE_KEY);
+    window.location.replace('/');
+  }
+  throw new Error('Sessão expirada. Faça login novamente.');
+}
+
 class ApiService {
   private baseUrl: string;
 
@@ -22,6 +45,8 @@ class ApiService {
       },
       body: JSON.stringify(redeemRequest),
     });
+
+    handleUnauthorized(response, 'staff');
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -65,6 +90,8 @@ class ApiService {
       body: JSON.stringify({ merchantId }),
     });
 
+    handleUnauthorized(response, 'staff');
+
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`Erro ao trocar merchant: ${response.status} - ${text}`);
@@ -94,6 +121,8 @@ class ApiService {
       },
       body: JSON.stringify({ programId, customerId }),
     });
+
+    handleUnauthorized(response, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -149,6 +178,8 @@ class ApiService {
       },
     });
 
+    handleUnauthorized(response, 'customer');
+
     if (!response.ok) {
       throw new Error(`Erro ao buscar cartões: ${response.statusText}`);
     }
@@ -163,6 +194,8 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
       },
     });
+
+    handleUnauthorized(response, 'customer');
 
     if (!response.ok) {
       throw new Error(`Erro ao gerar QR Code: ${response.statusText}`);
@@ -197,6 +230,8 @@ class ApiService {
       body: JSON.stringify(stampRequest),
     });
 
+    handleUnauthorized(response, 'staff');
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Erro ao aplicar carimbo: ${response.status} - ${errorText}`);
@@ -212,6 +247,8 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
       },
     });
+
+    handleUnauthorized(response, 'customer');
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -242,6 +279,8 @@ class ApiService {
       body: JSON.stringify(request),
     });
 
+    handleUnauthorized(response, 'staff');
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Erro ao resgatar recompensa: ${response.status} - ${errorText}`);
@@ -257,6 +296,8 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
       },
     });
+
+    handleUnauthorized(response, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -274,6 +315,8 @@ class ApiService {
       },
     });
 
+    handleUnauthorized(response, 'staff');
+
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`Erro ao buscar carimbos recentes: ${response.status} - ${text}`);
@@ -290,6 +333,8 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
       },
     });
+
+    handleUnauthorized(response, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
