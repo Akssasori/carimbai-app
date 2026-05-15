@@ -1,6 +1,39 @@
-import type { CustomerCardsResponse, QRTokenResponse, StampRequest, StampResponse, CustomerLoginRequest, CustomerLoginResponse, StaffLoginResponse, RedeemRequest, RedeemResponse, RedeemQrTokenResponse, RedeemQrRequest, ProgramItem, EnrollCardResponse, SocialProvider, DashboardMetrics, RecentStampItem, RecentRewardItem, RecentStampsResponse, RecentRewardsResponse } from '../types';
+import type {
+  CustomerCardsResponse, QRTokenResponse, StampRequest, StampResponse,
+  CustomerLoginRequest, CustomerLoginResponse, StaffLoginResponse,
+  RedeemRequest, RedeemResponse, RedeemQrTokenResponse, RedeemQrRequest,
+  ProgramItem, EnrollCardResponse, SocialProvider,
+  DashboardMetrics, RecentStampItem, RecentRewardItem,
+  RecentStampsResponse, RecentRewardsResponse,
+  AdminProgramItem, CreateProgramRequest, UpdateProgramRequest,
+  LocationItem, CreateLocationRequest, UpdateLocationRequest,
+  StaffItem, CreateStaffRequest, CreateStaffResponse, UpdateStaffMerchantRequest,
+} from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||'http://localhost:1234/api';
+
+const STAFF_STORAGE_KEY = 'carimbai_staff_session';
+const CUSTOMER_STORAGE_KEY = 'carimbai_customer';
+
+type SessionKind = 'staff' | 'customer';
+
+/**
+ * Em 401, limpa a sessao correspondente do localStorage e redireciona para o login.
+ * Lanca uma Error para abortar o fluxo no chamador. Para 403, nao redireciona porque
+ * 403 e um ownership violation legitimo (usuario logado, mas sem permissao naquele recurso).
+ */
+function handleUnauthorized(response: Response, kind: SessionKind): void {
+  if (response.status !== 401) return;
+
+  if (kind === 'staff') {
+    localStorage.removeItem(STAFF_STORAGE_KEY);
+    window.location.replace('/staff');
+  } else {
+    localStorage.removeItem(CUSTOMER_STORAGE_KEY);
+    window.location.replace('/');
+  }
+  throw new Error('Sessão expirada. Faça login novamente.');
+}
 
 class ApiService {
   private baseUrl: string;
@@ -22,6 +55,8 @@ class ApiService {
       },
       body: JSON.stringify(redeemRequest),
     });
+
+    handleUnauthorized(response, 'staff');
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -65,6 +100,8 @@ class ApiService {
       body: JSON.stringify({ merchantId }),
     });
 
+    handleUnauthorized(response, 'staff');
+
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`Erro ao trocar merchant: ${response.status} - ${text}`);
@@ -94,6 +131,8 @@ class ApiService {
       },
       body: JSON.stringify({ programId, customerId }),
     });
+
+    handleUnauthorized(response, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -149,6 +188,8 @@ class ApiService {
       },
     });
 
+    handleUnauthorized(response, 'customer');
+
     if (!response.ok) {
       throw new Error(`Erro ao buscar cartões: ${response.statusText}`);
     }
@@ -163,6 +204,8 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
       },
     });
+
+    handleUnauthorized(response, 'customer');
 
     if (!response.ok) {
       throw new Error(`Erro ao gerar QR Code: ${response.statusText}`);
@@ -197,6 +240,8 @@ class ApiService {
       body: JSON.stringify(stampRequest),
     });
 
+    handleUnauthorized(response, 'staff');
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Erro ao aplicar carimbo: ${response.status} - ${errorText}`);
@@ -212,6 +257,8 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
       },
     });
+
+    handleUnauthorized(response, 'customer');
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -242,6 +289,8 @@ class ApiService {
       body: JSON.stringify(request),
     });
 
+    handleUnauthorized(response, 'staff');
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Erro ao resgatar recompensa: ${response.status} - ${errorText}`);
@@ -258,6 +307,8 @@ class ApiService {
       },
     });
 
+    handleUnauthorized(response, 'staff');
+
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`Erro ao buscar métricas: ${response.status} - ${text}`);
@@ -273,6 +324,8 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
       },
     });
+
+    handleUnauthorized(response, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -291,6 +344,8 @@ class ApiService {
       },
     });
 
+    handleUnauthorized(response, 'staff');
+
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`Erro ao buscar prêmios recentes: ${response.status} - ${text}`);
@@ -298,6 +353,225 @@ class ApiService {
 
     const data: RecentRewardsResponse = await response.json();
     return data.items;
+  }
+
+  // ─── Admin: programs ──────────────────────────────────────────────
+
+  async getAdminPrograms(merchantId: number, token: string): Promise<AdminProgramItem[]> {
+    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/admin/programs`, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    handleUnauthorized(response, 'staff');
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao buscar programas: ${response.status} - ${text}`);
+    }
+    return response.json();
+  }
+
+  async createProgram(
+    merchantId: number,
+    request: CreateProgramRequest,
+    token: string,
+  ): Promise<AdminProgramItem> {
+    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/programs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(request),
+    });
+
+    handleUnauthorized(response, 'staff');
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao criar programa: ${response.status} - ${text}`);
+    }
+    return response.json();
+  }
+
+  async updateProgram(
+    merchantId: number,
+    programId: number,
+    request: UpdateProgramRequest,
+    token: string,
+  ): Promise<AdminProgramItem> {
+    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/programs/${programId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(request),
+    });
+
+    handleUnauthorized(response, 'staff');
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao atualizar programa: ${response.status} - ${text}`);
+    }
+    return response.json();
+  }
+
+  // ─── Admin: locations ─────────────────────────────────────────────
+
+  async getMerchantLocations(merchantId: number, token: string): Promise<LocationItem[]> {
+    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/locations`, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    handleUnauthorized(response, 'staff');
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao buscar locations: ${response.status} - ${text}`);
+    }
+    return response.json();
+  }
+
+  async createLocation(
+    merchantId: number,
+    request: CreateLocationRequest,
+    token: string,
+  ): Promise<{ merchantId: number; name: string; address: string | null }> {
+    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/locations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(request),
+    });
+
+    handleUnauthorized(response, 'staff');
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao criar location: ${response.status} - ${text}`);
+    }
+    return response.json();
+  }
+
+  async updateLocation(
+    merchantId: number,
+    locationId: number,
+    request: UpdateLocationRequest,
+    token: string,
+  ): Promise<LocationItem> {
+    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/locations/${locationId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(request),
+    });
+
+    handleUnauthorized(response, 'staff');
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao atualizar location: ${response.status} - ${text}`);
+    }
+    return response.json();
+  }
+
+  // ─── Admin: staff ─────────────────────────────────────────────────
+
+  async getMerchantStaff(merchantId: number, token: string): Promise<StaffItem[]> {
+    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/staff-users`, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    handleUnauthorized(response, 'staff');
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao buscar staff: ${response.status} - ${text}`);
+    }
+    return response.json();
+  }
+
+  async createStaff(request: CreateStaffRequest, token: string): Promise<CreateStaffResponse> {
+    const response = await fetch(`${this.baseUrl}/staff-users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(request),
+    });
+
+    handleUnauthorized(response, 'staff');
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao criar staff: ${response.status} - ${text}`);
+    }
+    return response.json();
+  }
+
+  async updateStaffInMerchant(
+    merchantId: number,
+    staffId: number,
+    request: UpdateStaffMerchantRequest,
+    token: string,
+  ): Promise<StaffItem> {
+    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/staff-users/${staffId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(request),
+    });
+
+    handleUnauthorized(response, 'staff');
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao atualizar staff: ${response.status} - ${text}`);
+    }
+    return response.json();
+  }
+
+  async setStaffPin(staffId: number, pin: string, token: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/admin/staff-users/${staffId}/pin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ pin }),
+    });
+
+    handleUnauthorized(response, 'staff');
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao definir PIN: ${response.status} - ${text}`);
+    }
   }
 
   async getVapidPublicKey(): Promise<{ publicKey: string }> {

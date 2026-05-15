@@ -197,3 +197,109 @@ export interface RecentStampsResponse {
 export interface RecentRewardsResponse {
   items: RecentRewardItem[];
 }
+
+// ─── Admin (gestão de programas / staff / locations) ───────────────────
+
+export type StaffRole = 'ADMIN' | 'CASHIER';
+
+export interface AdminProgramItem {
+  id: number;
+  merchantId: number;
+  name: string;
+  description: string | null;
+  ruleTotalStamps: number;
+  rewardName: string;
+  expirationDays: number | null;
+  active: boolean;
+  startAt: string | null;
+  endAt: string | null;
+  category: string | null;
+  terms: string | null;
+  imageUrl: string | null;
+  sortOrder: number;
+}
+
+export interface CreateProgramRequest {
+  name: string;
+  ruleTotalStamps?: number;
+  rewardName?: string;
+  expirationDays?: number | null;
+  description?: string | null;
+  startAt?: string | null;
+  endAt?: string | null;
+  category?: string | null;
+  terms?: string | null;
+  imageUrl?: string | null;
+  sortOrder?: number;
+}
+
+export interface UpdateProgramRequest {
+  name?: string;
+  ruleTotalStamps?: number;
+  rewardName?: string;
+  expirationDays?: number | null;
+  description?: string | null;
+  active?: boolean;
+  startAt?: string | null;
+  endAt?: string | null;
+  category?: string | null;
+  terms?: string | null;
+  imageUrl?: string | null;
+  sortOrder?: number;
+}
+
+export interface LocationFlags {
+  requirePinOnRedeem: boolean;
+  enableScanA: boolean;
+  enableScanB: boolean;
+}
+
+export interface LocationItem {
+  id: number;
+  merchantId: number;
+  name: string;
+  address: string | null;
+  active: boolean;
+  flags: LocationFlags;
+}
+
+export interface CreateLocationRequest {
+  merchantId: number;
+  name: string;
+  address?: string | null;
+}
+
+export interface UpdateLocationRequest {
+  name?: string;
+  address?: string | null;
+  active?: boolean;
+  flags?: LocationFlags;
+}
+
+export interface StaffItem {
+  staffId: number;
+  email: string;
+  role: StaffRole;
+  active: boolean;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+export interface CreateStaffRequest {
+  merchantId: number;
+  email: string;
+  password: string;
+  role: StaffRole;
+}
+
+export interface CreateStaffResponse {
+  id: number;
+  email: string;
+  merchantId: number;
+  role: StaffRole;
+}
+
+export interface UpdateStaffMerchantRequest {
+  role?: StaffRole;
+  active?: boolean;
+}
