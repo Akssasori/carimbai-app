@@ -78,11 +78,17 @@ export interface MerchantInfo {
 
 export interface StaffLoginResponse {
   token: string;
+  refreshToken: string;
   staffId: number;
   merchantId: number;
   role: 'ADMIN' | 'CASHIER';
   email: string;
   merchants: MerchantInfo[];
+}
+
+export interface RefreshTokenResponse {
+  token: string;
+  refreshToken: string;
 }
 
 export interface SwitchMerchantRequest {

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { MerchantInfo } from '../types';
+import { apiService } from '../services/api';
 
 export interface StaffSession {
   token: string;
+  refreshToken: string;
   staffId: number;
   role: 'ADMIN' | 'CASHIER';
   merchantId: number;
@@ -31,9 +33,15 @@ export function useStaffSession() {
   }, [session, navigate]);
 
   const logout = () => {
+    // Snapshot do refresh token antes de limpar — apos clear, perdemos.
+    const rt = session?.refreshToken;
     setSession(null);
     localStorage.removeItem(STORAGE_KEY);
     navigate('/staff', { replace: true });
+    // Best-effort: revogar no servidor. Nao bloqueia a UX se falhar.
+    if (rt) {
+      apiService.logoutStaff(rt);
+    }
   };
 
   return { session, logout };

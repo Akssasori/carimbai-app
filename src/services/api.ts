@@ -8,6 +8,7 @@ import type {
   AdminProgramItem, CreateProgramRequest, UpdateProgramRequest,
   LocationItem, CreateLocationRequest, UpdateLocationRequest,
   StaffItem, CreateStaffRequest, CreateStaffResponse, UpdateStaffMerchantRequest,
+  RefreshTokenResponse,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||'http://localhost:1234/api';
@@ -17,14 +18,54 @@ const CUSTOMER_STORAGE_KEY = 'carimbai_customer';
 
 type SessionKind = 'staff' | 'customer';
 
-/**
- * Em 401, limpa a sessao correspondente do localStorage e redireciona para o login.
- * Lanca uma Error para abortar o fluxo no chamador. Para 403, nao redireciona porque
- * 403 e um ownership violation legitimo (usuario logado, mas sem permissao naquele recurso).
- */
-function handleUnauthorized(response: Response, kind: SessionKind): void {
-  if (response.status !== 401) return;
+interface StaffSessionLite {
+  token: string;
+  refreshToken?: string;
+}
 
+// ─── Refresh token: single-flight (evita N requests 401 disparando N refreshes) ──
+
+let inflightRefresh: Promise<string | null> | null = null;
+
+async function tryStaffRefresh(): Promise<string | null> {
+  if (inflightRefresh) return inflightRefresh;
+  inflightRefresh = doStaffRefresh();
+  try {
+    return await inflightRefresh;
+  } finally {
+    inflightRefresh = null;
+  }
+}
+
+async function doStaffRefresh(): Promise<string | null> {
+  const raw = localStorage.getItem(STAFF_STORAGE_KEY);
+  if (!raw) return null;
+
+  let session: StaffSessionLite | null = null;
+  try {
+    session = JSON.parse(raw) as StaffSessionLite;
+  } catch {
+    return null;
+  }
+  if (!session?.refreshToken) return null;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ refreshToken: session.refreshToken }),
+    });
+    if (!res.ok) return null;
+    const data: RefreshTokenResponse = await res.json();
+    const updated = { ...session, token: data.token, refreshToken: data.refreshToken };
+    localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(updated));
+    return data.token;
+  } catch {
+    return null;
+  }
+}
+
+function clearSessionAndRedirect(kind: SessionKind): never {
   if (kind === 'staff') {
     localStorage.removeItem(STAFF_STORAGE_KEY);
     window.location.replace('/staff');
@@ -33,6 +74,39 @@ function handleUnauthorized(response: Response, kind: SessionKind): void {
     window.location.replace('/');
   }
   throw new Error('Sessão expirada. Faça login novamente.');
+}
+
+/**
+ * Faz fetch com tratamento automatico de 401:
+ * - Para 'staff': tenta refresh transparente. Se sucesso, repete a request com novo access token.
+ *   Se refresh falha, limpa localStorage e redireciona para /staff.
+ * - Para 'customer': nao ha refresh hoje; 401 limpa localStorage e redireciona para /.
+ * - Sem `kind`: comportamento de fetch puro, sem tratamento de 401 (uso em endpoints publicos).
+ * - 403 NUNCA dispara redirect (ownership violation legitimo). Caller trata como erro normal.
+ */
+async function authedFetch(
+  url: RequestInfo,
+  init?: RequestInit,
+  kind?: SessionKind,
+): Promise<Response> {
+  let response = await fetch(url, init);
+
+  if (!kind) return response;
+
+  if (response.status === 401 && kind === 'staff') {
+    const newToken = await tryStaffRefresh();
+    if (newToken && init) {
+      const newHeaders = new Headers(init.headers);
+      newHeaders.set('Authorization', `Bearer ${newToken}`);
+      response = await fetch(url, { ...init, headers: newHeaders });
+    }
+  }
+
+  if (response.status === 401) {
+    clearSessionAndRedirect(kind);
+  }
+
+  return response;
 }
 
 class ApiService {
@@ -46,7 +120,7 @@ class ApiService {
     redeemRequest: RedeemRequest,
     token: string
   ): Promise<RedeemResponse> {
-    const response = await fetch(`${this.baseUrl}/redeem`, {
+    const response = await authedFetch(`${this.baseUrl}/redeem`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -54,9 +128,7 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(redeemRequest),
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -66,13 +138,32 @@ class ApiService {
     return response.json();
   }
 
+  /**
+   * Logout server-side: revoga o refresh token. Front deve descartar a sessao em seguida.
+   * Idempotente; ignora falhas (importante para nao bloquear logout local em rede flaky).
+   */
+  async logoutStaff(refreshToken: string): Promise<void> {
+    try {
+      await fetch(`${this.baseUrl}/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken }),
+      });
+    } catch {
+      // logout deve sempre concluir mesmo se a rede falhar
+    }
+  }
+
   async loginStaff(email: string, password: string, merchantId?: number): Promise<StaffLoginResponse> {
     const body: Record<string, unknown> = { email, password };
     if (merchantId != null) {
       body.merchantId = merchantId;
     }
 
-    const response = await fetch(`${this.baseUrl}/auth/login`, {
+    const response = await authedFetch(`${this.baseUrl}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -90,7 +181,7 @@ class ApiService {
   }
 
   async switchMerchant(merchantId: number, token: string): Promise<StaffLoginResponse> {
-    const response = await fetch(`${this.baseUrl}/auth/switch-merchant`, {
+    const response = await authedFetch(`${this.baseUrl}/auth/switch-merchant`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -98,9 +189,7 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({ merchantId }),
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -111,7 +200,7 @@ class ApiService {
   }
 
   async getMerchantPrograms(merchantId: number): Promise<ProgramItem[]> {
-    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/programs`);
+    const response = await authedFetch(`${this.baseUrl}/merchants/${merchantId}/programs`);
 
     if (!response.ok) {
       const text = await response.text();
@@ -122,7 +211,7 @@ class ApiService {
   }
 
   async enrollCustomer(programId: number, customerId: number, token: string): Promise<EnrollCardResponse> {
-    const response = await fetch(`${this.baseUrl}/cards`, {
+    const response = await authedFetch(`${this.baseUrl}/cards`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -130,9 +219,7 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({ programId, customerId }),
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -144,7 +231,7 @@ class ApiService {
   }
 
   async socialLoginCustomer(provider: SocialProvider, token: string): Promise<CustomerLoginResponse> {
-    const response = await fetch(`${this.baseUrl}/customers/social-login`, {
+    const response = await authedFetch(`${this.baseUrl}/customers/social-login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -163,7 +250,7 @@ class ApiService {
 
   // 🔹 LOGIN LIGHT DO CLIENTE
   async loginOrRegisterCustomer(payload: CustomerLoginRequest): Promise<CustomerLoginResponse> {
-    const response = await fetch(`${this.baseUrl}/customers/login-or-register`, {
+    const response = await authedFetch(`${this.baseUrl}/customers/login-or-register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -181,14 +268,12 @@ class ApiService {
   }
 
   async getCustomerCards(customerId: number, token: string): Promise<CustomerCardsResponse> {
-    const response = await fetch(`${this.baseUrl}/cards/customer/${customerId}`, {
+    const response = await authedFetch(`${this.baseUrl}/cards/customer/${customerId}`, {
       headers: {
         'Accept': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-    });
-
-    handleUnauthorized(response, 'customer');
+    }, 'customer');
 
     if (!response.ok) {
       throw new Error(`Erro ao buscar cartões: ${response.statusText}`);
@@ -198,14 +283,12 @@ class ApiService {
   }
 
   async getCardQR(cardId: number, token: string): Promise<QRTokenResponse> {
-    const response = await fetch(`${this.baseUrl}/qr/${cardId}`, {
+    const response = await authedFetch(`${this.baseUrl}/qr/${cardId}`, {
       headers: {
         'Accept': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-    });
-
-    handleUnauthorized(response, 'customer');
+    }, 'customer');
 
     if (!response.ok) {
       throw new Error(`Erro ao gerar QR Code: ${response.statusText}`);
@@ -234,13 +317,11 @@ class ApiService {
     headers['X-Location-Id'] = String(locationId);
     }
 
-    const response = await fetch(`${this.baseUrl}/stamp`, {
+    const response = await authedFetch(`${this.baseUrl}/stamp`, {
       method: 'POST',
       headers,
       body: JSON.stringify(stampRequest),
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -251,14 +332,12 @@ class ApiService {
   }
 
   async getRedeemQR(cardId: number, token: string): Promise<RedeemQrTokenResponse> {
-    const response = await fetch(`${this.baseUrl}/cards/${cardId}/redeem-qr`, {
+    const response = await authedFetch(`${this.baseUrl}/cards/${cardId}/redeem-qr`, {
       headers: {
         'Accept': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-    });
-
-    handleUnauthorized(response, 'customer');
+    }, 'customer');
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -283,13 +362,11 @@ class ApiService {
       headers['X-Cashier-Pin'] = cashierPin;
     }
 
-    const response = await fetch(`${this.baseUrl}/redeem`, {
+    const response = await authedFetch(`${this.baseUrl}/redeem`, {
       method: 'POST',
       headers,
       body: JSON.stringify(request),
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -300,14 +377,12 @@ class ApiService {
   }
 
   async getStaffDashboardMetrics(token: string): Promise<DashboardMetrics> {
-    const response = await fetch(`${this.baseUrl}/staff/dashboard/metrics`, {
+    const response = await authedFetch(`${this.baseUrl}/staff/dashboard/metrics`, {
       headers: {
         'Accept': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -318,14 +393,12 @@ class ApiService {
   }
 
   async getRecentStamps(token: string, limit = 10): Promise<RecentStampItem[]> {
-    const response = await fetch(`${this.baseUrl}/staff/stamps/recent?limit=${limit}`, {
+    const response = await authedFetch(`${this.baseUrl}/staff/stamps/recent?limit=${limit}`, {
       headers: {
         'Accept': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -337,14 +410,12 @@ class ApiService {
   }
 
   async getRecentRewards(token: string, limit = 10): Promise<RecentRewardItem[]> {
-    const response = await fetch(`${this.baseUrl}/staff/rewards/recent?limit=${limit}`, {
+    const response = await authedFetch(`${this.baseUrl}/staff/rewards/recent?limit=${limit}`, {
       headers: {
         'Accept': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -358,14 +429,12 @@ class ApiService {
   // ─── Admin: programs ──────────────────────────────────────────────
 
   async getAdminPrograms(merchantId: number, token: string): Promise<AdminProgramItem[]> {
-    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/admin/programs`, {
+    const response = await authedFetch(`${this.baseUrl}/merchants/${merchantId}/admin/programs`, {
       headers: {
         'Accept': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -379,7 +448,7 @@ class ApiService {
     request: CreateProgramRequest,
     token: string,
   ): Promise<AdminProgramItem> {
-    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/programs`, {
+    const response = await authedFetch(`${this.baseUrl}/merchants/${merchantId}/programs`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -387,9 +456,7 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(request),
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -404,7 +471,7 @@ class ApiService {
     request: UpdateProgramRequest,
     token: string,
   ): Promise<AdminProgramItem> {
-    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/programs/${programId}`, {
+    const response = await authedFetch(`${this.baseUrl}/merchants/${merchantId}/programs/${programId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -412,9 +479,7 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(request),
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -426,14 +491,12 @@ class ApiService {
   // ─── Admin: locations ─────────────────────────────────────────────
 
   async getMerchantLocations(merchantId: number, token: string): Promise<LocationItem[]> {
-    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/locations`, {
+    const response = await authedFetch(`${this.baseUrl}/merchants/${merchantId}/locations`, {
       headers: {
         'Accept': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -447,7 +510,7 @@ class ApiService {
     request: CreateLocationRequest,
     token: string,
   ): Promise<{ merchantId: number; name: string; address: string | null }> {
-    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/locations`, {
+    const response = await authedFetch(`${this.baseUrl}/merchants/${merchantId}/locations`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -455,9 +518,7 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(request),
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -472,7 +533,7 @@ class ApiService {
     request: UpdateLocationRequest,
     token: string,
   ): Promise<LocationItem> {
-    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/locations/${locationId}`, {
+    const response = await authedFetch(`${this.baseUrl}/merchants/${merchantId}/locations/${locationId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -480,9 +541,7 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(request),
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -494,14 +553,12 @@ class ApiService {
   // ─── Admin: staff ─────────────────────────────────────────────────
 
   async getMerchantStaff(merchantId: number, token: string): Promise<StaffItem[]> {
-    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/staff-users`, {
+    const response = await authedFetch(`${this.baseUrl}/merchants/${merchantId}/staff-users`, {
       headers: {
         'Accept': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -511,7 +568,7 @@ class ApiService {
   }
 
   async createStaff(request: CreateStaffRequest, token: string): Promise<CreateStaffResponse> {
-    const response = await fetch(`${this.baseUrl}/staff-users`, {
+    const response = await authedFetch(`${this.baseUrl}/staff-users`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -519,9 +576,7 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(request),
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -536,7 +591,7 @@ class ApiService {
     request: UpdateStaffMerchantRequest,
     token: string,
   ): Promise<StaffItem> {
-    const response = await fetch(`${this.baseUrl}/merchants/${merchantId}/staff-users/${staffId}`, {
+    const response = await authedFetch(`${this.baseUrl}/merchants/${merchantId}/staff-users/${staffId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -544,9 +599,7 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(request),
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -556,7 +609,7 @@ class ApiService {
   }
 
   async setStaffPin(staffId: number, pin: string, token: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/admin/staff-users/${staffId}/pin`, {
+    const response = await authedFetch(`${this.baseUrl}/admin/staff-users/${staffId}/pin`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -564,9 +617,7 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({ pin }),
-    });
-
-    handleUnauthorized(response, 'staff');
+    }, 'staff');
 
     if (!response.ok) {
       const text = await response.text();
@@ -575,7 +626,7 @@ class ApiService {
   }
 
   async getVapidPublicKey(): Promise<{ publicKey: string }> {
-    const response = await fetch(`${this.baseUrl}/notifications/vapid-public-key`);
+    const response = await authedFetch(`${this.baseUrl}/notifications/vapid-public-key`);
     if (!response.ok) {
       throw new Error('Erro ao buscar VAPID key');
     }
@@ -584,7 +635,7 @@ class ApiService {
 
   async subscribePush(customerId: number, subscription: PushSubscription): Promise<void> {
     const json = subscription.toJSON();
-    const response = await fetch(`${this.baseUrl}/notifications/subscribe`, {
+    const response = await authedFetch(`${this.baseUrl}/notifications/subscribe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
