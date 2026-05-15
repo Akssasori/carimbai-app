@@ -25,6 +25,7 @@ interface RedeemResult {
 
 interface StaffSession {
   token: string;
+  refreshToken: string;
   staffId: number;
   role: 'ADMIN' | 'CASHIER';
   merchantId: number;
@@ -80,6 +81,7 @@ export default function StaffScreen() {
       const updatedSession: StaffSession = {
         ...session,
         token: res.token,
+        refreshToken: res.refreshToken,
         role: res.role,
         merchantId: res.merchantId,
         merchants: res.merchants ?? session.merchants,
@@ -254,6 +256,7 @@ export default function StaffScreen() {
   }, [session?.token, session?.merchantId]);
 
   function handleLogout() {
+    const rt = session?.refreshToken;
     setSession(null);
     localStorage.removeItem(STAFF_STORAGE_KEY);
     setScanning(false);
@@ -262,6 +265,9 @@ export default function StaffScreen() {
       scannerRef.current = null;
     }
     navigate('/staff', { replace: true });
+    if (rt) {
+      apiService.logoutStaff(rt);
+    }
   }
 
   useEffect(() => {

@@ -31,6 +31,7 @@ export default function StaffLogin() {
       const res = await apiService.loginStaff(email, senha);
       const session = {
         token: res.token,
+        refreshToken: res.refreshToken,
         staffId: res.staffId,
         role: res.role,
         merchantId: res.merchantId,
