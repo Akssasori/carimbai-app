@@ -1,0 +1,114 @@
+/*
+ * SideNav usado em /staff/dashboard e /staff/admin/*.
+ * Estilos sao identicos aos definidos historicamente em StaffScreen.css
+ * (mantidos la para nao quebrar o dashboard caso esse CSS nao carregue).
+ * Quando StaffScreen.tsx for refatorado para usar <SideNav>, esses estilos
+ * podem eventualmente ser removidos de StaffScreen.css. Por ora, duplicacao
+ * intencional e benigna (regras identicas).
+ */
+
+.sidebar {
+  width: 80px;
+  background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0;
+  flex-shrink: 0;
+}
+
+.sidebar-logo {
+  margin-bottom: 24px;
+}
+
+.logo-icon-wrap {
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-icon-wrap svg {
+  width: 24px;
+  height: 24px;
+  color: white;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 1;
+}
+
+.nav-item {
+  width: 48px;
+  height: 48px;
+  border: none;
+  background: transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.nav-item svg {
+  width: 24px;
+  height: 24px;
+  color: rgba(255, 255, 255, 0.7);
+  transition: color 0.2s;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.nav-item:hover svg {
+  color: white;
+}
+
+.nav-item.active {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.nav-item.active svg {
+  color: white;
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+}
+
+@media (max-width: 720px) {
+  .sidebar {
+    width: 64px;
+    padding: 16px 0;
+  }
+  .sidebar-nav {
+    gap: 16px;
+  }
+  .nav-item {
+    width: 40px;
+    height: 40px;
+  }
+  .nav-item svg {
+    width: 20px;
+    height: 20px;
+  }
+  .logo-icon-wrap {
+    width: 36px;
+    height: 36px;
+  }
+  .logo-icon-wrap svg {
+    width: 20px;
+    height: 20px;
+  }
+}
