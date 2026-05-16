@@ -47,8 +47,9 @@ export default function StaffLogin() {
     }
   };
 
-  // Fluxo de recuperacao de senha ainda nao implementado no backend.
-  // Link "Esqueceu a senha?" foi removido para nao prometer feature inexistente.
+  const handleForgotPassword = () => {
+    navigate('/staff/forgot-password');
+  };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -231,6 +232,24 @@ export default function StaffLogin() {
               >
                 {loading ? 'Entrando...' : 'Entrar'}
               </button>
+
+              <div style={styles.forgotLink}>
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  style={styles.link}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = '#7c3aed';
+                    e.currentTarget.style.textDecoration = 'underline';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = '#6b7280';
+                    e.currentTarget.style.textDecoration = 'none';
+                  }}
+                >
+                  Esqueceu a senha? Clique aqui para recuperar.
+                </button>
+              </div>
             </div>
           </div>
         </div>

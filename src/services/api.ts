@@ -139,6 +139,44 @@ class ApiService {
   }
 
   /**
+   * Inicia fluxo de reset de senha do staff. Sempre retorna 204 (mesmo se email
+   * nao existe — anti-enumeration). Front mostra mensagem generica.
+   */
+  async forgotPassword(email: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/auth/forgot-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro ao solicitar reset: ${response.status} - ${text}`);
+    }
+  }
+
+  /**
+   * Consome o token do link e troca a senha. Em 401 (token invalido/expirado/usado),
+   * caller mostra mensagem clara para o usuario pedir novo link.
+   */
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/auth/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ token, newPassword }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`${response.status}: ${text}`);
+    }
+  }
+
+  /**
    * Logout server-side: revoga o refresh token. Front deve descartar a sessao em seguida.
    * Idempotente; ignora falhas (importante para nao bloquear logout local em rede flaky).
    */
@@ -633,20 +671,23 @@ class ApiService {
     return response.json();
   }
 
-  async subscribePush(customerId: number, subscription: PushSubscription): Promise<void> {
+  async subscribePush(customerId: number, subscription: PushSubscription, token: string): Promise<void> {
     const json = subscription.toJSON();
     const response = await authedFetch(`${this.baseUrl}/notifications/subscribe`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
       body: JSON.stringify({
-        customerId,
+        customerId,  // ignorado pelo backend (vem do JWT); enviado por compatibilidade
         endpoint: json.endpoint,
         keys: {
           p256dh: json.keys?.p256dh,
           auth: json.keys?.auth,
         },
       }),
-    });
+    }, 'customer');
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`Erro ao inscrever push: ${response.status} - ${text}`);
