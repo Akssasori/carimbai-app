@@ -5,6 +5,8 @@ import { CustomerOnboarding } from './components/CustomerLogin';
 import './App.css';
 import { Route, Routes, Navigate } from 'react-router-dom';
 import StaffLogin from './components/StaffLogin';
+import ForgotPassword from './components/staff/ForgotPassword';
+import ResetPassword from './components/staff/ResetPassword';
 import ProgramsAdmin from './components/admin/ProgramsAdmin';
 import StaffAdmin from './components/admin/StaffAdmin';
 import LocationsAdmin from './components/admin/LocationsAdmin';
@@ -71,6 +73,8 @@ function App() {
 
         {/* Rotas do lojista */}
         <Route path="/staff" element={<StaffLogin />} />
+        <Route path="/staff/forgot-password" element={<ForgotPassword />} />
+        <Route path="/staff/reset-password" element={<ResetPassword />} />
         <Route path="/staff/dashboard" element={<StaffScreen />} />
 
         {/* Rotas admin (gestao) */}
