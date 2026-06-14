@@ -4,42 +4,12 @@ import FacebookLogin from '@greatsumini/react-facebook-login';
 import type { SocialProvider } from '../types';
 
 interface Props {
-  onSubmit: (data: { name?: string; email?: string; phone?: string }) => Promise<void>;
   onSocialLogin: (provider: SocialProvider, token: string) => Promise<unknown>;
 }
 
-export function CustomerOnboarding({ onSubmit, onSocialLogin }: Props) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+export function CustomerOnboarding({ onSocialLogin }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [errors, setErrors] = useState<{ email?: string }>({});
-
-  const validate = () => {
-    const newErrors: typeof errors = {};
-    if (!email.trim()) {
-      newErrors.email = 'Email é obrigatório';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'Email inválido';
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    setError('');
-    if (!validate()) return;
-    setLoading(true);
-    try {
-      await onSubmit({ name, email, phone });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erro ao salvar seus dados';
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSocial = async (provider: SocialProvider, token: string) => {
     setError('');
@@ -52,21 +22,6 @@ export function CustomerOnboarding({ onSubmit, onSocialLogin }: Props) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '16px 18px',
-    borderRadius: '10px',
-    border: '1px solid transparent',
-    backgroundColor: '#f1f6ff',
-    fontSize: '16px',
-    fontWeight: '500',
-    color: '#20232d',
-    outline: 'none',
-    transition: 'all 0.2s',
-    boxSizing: 'border-box',
-    fontFamily: 'inherit',
   };
 
   return (
@@ -112,7 +67,7 @@ export function CustomerOnboarding({ onSubmit, onSocialLogin }: Props) {
             lineHeight: '1.15',
             letterSpacing: '-0.5px',
           }}>
-            Faça seu cadastro
+            Entre para acessar
           </h1>
           <p style={{
             color: '#6b7280',
@@ -120,7 +75,7 @@ export function CustomerOnboarding({ onSubmit, onSocialLogin }: Props) {
             fontWeight: '400',
             marginTop: '6px',
           }}>
-            Conecte-se para acessar seu cartão de fidelidade
+            Conecte-se com sua conta para ver seus cartões de fidelidade
           </p>
         </div>
 
@@ -133,7 +88,7 @@ export function CustomerOnboarding({ onSubmit, onSocialLogin }: Props) {
         }}>
 
           {/* Botões sociais */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
             {/* Google */}
             <div style={{ width: '100%', display: 'flex', justifyContent: 'stretch' }}>
@@ -201,83 +156,11 @@ export function CustomerOnboarding({ onSubmit, onSocialLogin }: Props) {
             />
           </div>
 
-          {/* Divider */}
-          <div style={{ display: 'flex', alignItems: 'center', margin: '0 0 20px 0', padding: '4px 0' }}>
-            <div style={{ flex: 1, height: '1px', background: 'rgba(20,30,60,0.08)' }}></div>
-            <span style={{ padding: '0 16px', color: '#9aa0b2', fontSize: '14px', fontWeight: '500' }}>ou continue com email</span>
-            <div style={{ flex: 1, height: '1px', background: 'rgba(20,30,60,0.08)' }}></div>
-          </div>
-
-          {/* Formulário de email/nome/telefone */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-            <input
-              type="text"
-              placeholder="Nome completo"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              style={inputStyle}
-              onFocus={(e) => { e.target.style.borderColor = '#6a56ff'; e.target.style.boxShadow = '0 0 0 4px rgba(106,86,255,0.14)'; }}
-              onBlur={(e) => { e.target.style.borderColor = 'transparent'; e.target.style.boxShadow = 'none'; }}
-            />
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={{ ...inputStyle, border: `1px solid ${errors.email ? '#dc2626' : 'transparent'}` }}
-                onFocus={(e) => { e.target.style.borderColor = '#6a56ff'; e.target.style.boxShadow = '0 0 0 4px rgba(106,86,255,0.14)'; }}
-                onBlur={(e) => { e.target.style.borderColor = errors.email ? '#dc2626' : 'transparent'; e.target.style.boxShadow = 'none'; }}
-              />
-              {errors.email && (
-                <span style={{ color: '#dc2626', fontSize: '13px' }}>{errors.email}</span>
-              )}
-            </div>
-
-            <input
-              type="tel"
-              placeholder="Telefone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              style={inputStyle}
-              onFocus={(e) => { e.target.style.borderColor = '#6a56ff'; e.target.style.boxShadow = '0 0 0 4px rgba(106,86,255,0.14)'; }}
-              onBlur={(e) => { e.target.style.borderColor = 'transparent'; e.target.style.boxShadow = 'none'; }}
-            />
-
-            {error && (
-              <p style={{ color: '#dc2626', fontSize: '13px', textAlign: 'center', margin: '0' }}>
-                {error}
-              </p>
-            )}
-
-            <div style={{ paddingTop: '4px' }}>
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                style={{
-                  width: '100%',
-                  padding: '16px',
-                  borderRadius: '10px',
-                  border: 'none',
-                  color: 'white',
-                  fontSize: '17px',
-                  fontWeight: '700',
-                  cursor: loading ? 'default' : 'pointer',
-                  background: '#6a56ff',
-                  boxShadow: '0 8px 20px -8px rgba(106,86,255,0.45)',
-                  transition: 'all 0.25s',
-                  opacity: loading ? 0.7 : 1,
-                  transform: loading ? 'scale(0.98)' : 'scale(1)',
-                  fontFamily: 'inherit',
-                }}
-                onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 12px 24px -8px rgba(106,86,255,0.45)'; } }}
-                onMouseLeave={(e) => { if (!loading) { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 8px 20px -8px rgba(106,86,255,0.45)'; } }}
-              >
-                {loading ? 'Cadastrando...' : 'Entrar'}
-              </button>
-            </div>
-          </div>
+          {error && (
+            <p style={{ color: '#dc2626', fontSize: '13px', textAlign: 'center', marginTop: '16px', marginBottom: '0' }}>
+              {error}
+            </p>
+          )}
 
           {/* Rodapé */}
           <p style={{
@@ -285,7 +168,7 @@ export function CustomerOnboarding({ onSubmit, onSocialLogin }: Props) {
             fontSize: '13px',
             lineHeight: '1.4',
             textAlign: 'center',
-            marginTop: '16px',
+            marginTop: '20px',
             marginBottom: '0',
             fontFamily: 'inherit',
           }}>

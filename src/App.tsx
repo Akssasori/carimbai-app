@@ -7,7 +7,7 @@ import { Route, Routes, Navigate } from 'react-router-dom';
 import StaffLogin from './components/StaffLogin';
 
 function App() {
-  const { customer, loading, loginOrRegister, socialLogin } = useCustomer();
+  const { customer, loading, socialLogin } = useCustomer();
 
   return (
     <div className="app-container">
@@ -20,12 +20,7 @@ function App() {
               {loading && <div>Carregando...</div>}
 
               {!loading && !customer && (
-                <CustomerOnboarding
-                  onSubmit={async ({ name, email, phone }) => {
-                    await loginOrRegister({ name, email, phone, providerId: undefined });
-                  }}
-                  onSocialLogin={socialLogin}
-                />
+                <CustomerOnboarding onSocialLogin={socialLogin} />
               )}
 
               {!loading && customer && (

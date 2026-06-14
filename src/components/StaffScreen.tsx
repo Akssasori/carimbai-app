@@ -231,8 +231,11 @@ export default function StaffScreen() {
   }, [session, navigate]);
 
   function handleLogout() {
+    // FIX-11 / SEC-012 — revoga o JWT no backend (fire-and-forget; sempre limpa local).
+    const token = session?.token;
     setSession(null);
     localStorage.removeItem(STAFF_STORAGE_KEY);
+    apiService.logout(token).catch(() => {});
     setScanning(false);
     if (scannerRef.current) {
       scannerRef.current.clear().catch(console.error);
