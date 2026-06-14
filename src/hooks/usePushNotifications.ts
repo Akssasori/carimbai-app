@@ -12,7 +12,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return output;
 }
 
-export function usePushNotifications(customerId: number | undefined) {
+export function usePushNotifications(customerId: number | undefined, token?: string) {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [supported, setSupported] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
@@ -56,7 +56,7 @@ export function usePushNotifications(customerId: number | undefined) {
         });
       }
 
-      await apiService.subscribePush(customerId, sub);
+      await apiService.subscribePush(customerId, sub, token);
       setSubscribed(true);
     } catch (err) {
       console.error('Erro ao ativar notificações push:', err);

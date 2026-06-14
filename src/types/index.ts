@@ -49,6 +49,8 @@ export interface CustomerData {
   phone?: string;
   providerId?: string;
   created: boolean;
+  // JWT de cliente — vem do social-login (FIX-02). Ausente no login-light.
+  token?: string;
 }
 
 export interface CustomerLoginRequest {
@@ -65,6 +67,8 @@ export interface CustomerLoginResponse {
   phone?: string;
   providerId?: string;
   created: boolean;
+  // JWT de cliente — preenchido no social-login (FIX-02); null/ausente no login-light.
+  token?: string;
 }
 
 export interface MerchantInfo {

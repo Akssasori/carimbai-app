@@ -140,23 +140,33 @@ class ApiService {
     return response.json();
   }
 
-  async getCustomerCards(customerId: number): Promise<CustomerCardsResponse> {
-    const response = await fetch(`${this.baseUrl}/cards/customer/${customerId}`);
-    
+  // Header de autenticação do cliente — Bearer opcional (FIX-02 Fase B).
+  // Enviado quando há token (social-login); ausente no login-light.
+  private customerAuthHeaders(token?: string): Record<string, string> {
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
+  async getCustomerCards(customerId: number, token?: string): Promise<CustomerCardsResponse> {
+    const response = await fetch(`${this.baseUrl}/cards/customer/${customerId}`, {
+      headers: this.customerAuthHeaders(token),
+    });
+
     if (!response.ok) {
       throw new Error(`Erro ao buscar cartões: ${response.statusText}`);
     }
-    
+
     return response.json();
   }
 
-  async getCardQR(cardId: number): Promise<QRTokenResponse> {
-    const response = await fetch(`${this.baseUrl}/qr/${cardId}`);
-    
+  async getCardQR(cardId: number, token?: string): Promise<QRTokenResponse> {
+    const response = await fetch(`${this.baseUrl}/qr/${cardId}`, {
+      headers: this.customerAuthHeaders(token),
+    });
+
     if (!response.ok) {
       throw new Error(`Erro ao gerar QR Code: ${response.statusText}`);
     }
-    
+
     return response.json();
   }
 
@@ -194,8 +204,10 @@ class ApiService {
     return response.json();
   }
 
-  async getRedeemQR(cardId: number): Promise<RedeemQrTokenResponse> {
-    const response = await fetch(`${this.baseUrl}/cards/${cardId}/redeem-qr`);
+  async getRedeemQR(cardId: number, token?: string): Promise<RedeemQrTokenResponse> {
+    const response = await fetch(`${this.baseUrl}/cards/${cardId}/redeem-qr`, {
+      headers: this.customerAuthHeaders(token),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -242,11 +254,11 @@ class ApiService {
     return response.json();
   }
 
-  async subscribePush(customerId: number, subscription: PushSubscription): Promise<void> {
+  async subscribePush(customerId: number, subscription: PushSubscription, token?: string): Promise<void> {
     const json = subscription.toJSON();
     const response = await fetch(`${this.baseUrl}/notifications/subscribe`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...this.customerAuthHeaders(token) },
       body: JSON.stringify({
         customerId,
         endpoint: json.endpoint,
