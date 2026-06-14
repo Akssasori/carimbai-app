@@ -10,8 +10,7 @@ interface HomeScreenProps {
   customerId: number;
   customerName?: string;
   customerEmail?: string;
-  customerToken: string;
-  onLogout: () => void;
+  customerToken?: string;
 }
 
 const StampCheckSvg = () => (
@@ -41,7 +40,6 @@ const HomeScreen = ({
   customerName = "Cliente",
   customerEmail,
   customerToken,
-  onLogout,
 }: HomeScreenProps) => {
   const [cards, setCards] = useState<Card[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -54,8 +52,7 @@ const HomeScreen = ({
   const [modalSuccess, setModalSuccess] = useState<'stamp' | 'redeem' | null>(null);
   const previousStampsCountRef = useRef<number>(0);
   const successTriggeredRef = useRef(false);
-  const { permission, supported, subscribed, loading: pushLoading, subscribe: subscribePush } =
-    usePushNotifications(customerId, customerToken);
+  const { permission, supported, subscribed, loading: pushLoading, subscribe: subscribePush } = usePushNotifications(customerId, customerToken);
 
   const card = cards.length > 0 ? cards[selectedIndex] ?? null : null;
   const cardRef = useRef(card);
@@ -74,6 +71,7 @@ const HomeScreen = ({
   const fetchCards = useCallback(async (isPolling = false) => {
     try {
       if (!isPolling) setLoading(true);
+      const response = await apiService.getCustomerCards(customerId, customerToken);
       const response = await apiService.getCustomerCards(customerId, customerToken);
 
       if (response.cards && response.cards.length > 0) {
@@ -112,7 +110,7 @@ const HomeScreen = ({
     } finally {
       if (!isPolling) setLoading(false);
     }
-  }, [customerId, customerToken, selectedIndex]);
+  }, [customerId, selectedIndex, customerToken]);
 
   const triggerSuccess = useCallback((type: 'stamp' | 'redeem') => {
     if (successTriggeredRef.current) return;
@@ -152,6 +150,7 @@ const HomeScreen = ({
     try {
       setLoadingQR(true);
       const token = await apiService.getCardQR(card.cardId, customerToken);
+      const token = await apiService.getCardQR(card.cardId, customerToken);
       setQrToken(token);
     } catch (err) {
       console.error("Erro ao gerar QR Code:", err);
@@ -165,6 +164,7 @@ const HomeScreen = ({
     if (!card) return;
     try {
       setLoadingRedeemQR(true);
+      const token = await apiService.getRedeemQR(card.cardId, customerToken);
       const token = await apiService.getRedeemQR(card.cardId, customerToken);
       setRedeemQrToken(token);
     } catch (err) {

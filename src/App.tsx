@@ -64,7 +64,6 @@ function App() {
                   customerName={customer.name ?? 'Cliente'}
                   customerEmail={customer.email}
                   customerToken={customer.token}
-                  onLogout={logout}
                 />
               )}
             </>
