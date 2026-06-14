@@ -1,15 +1,4 @@
-import type {
-  CustomerCardsResponse, QRTokenResponse, StampRequest, StampResponse,
-  CustomerLoginRequest, CustomerLoginResponse, StaffLoginResponse,
-  RedeemRequest, RedeemResponse, RedeemQrTokenResponse, RedeemQrRequest,
-  ProgramItem, EnrollCardResponse, SocialProvider,
-  DashboardMetrics, RecentStampItem, RecentRewardItem,
-  RecentStampsResponse, RecentRewardsResponse,
-  AdminProgramItem, CreateProgramRequest, UpdateProgramRequest,
-  LocationItem, CreateLocationRequest, UpdateLocationRequest,
-  StaffItem, CreateStaffRequest, CreateStaffResponse, UpdateStaffMerchantRequest,
-  RefreshTokenResponse,
-} from '../types';
+import type { CustomerCardsResponse, QRTokenResponse, StampRequest, StampResponse, CustomerLoginResponse, StaffLoginResponse, RedeemRequest, RedeemResponse, RedeemQrTokenResponse, RedeemQrRequest, ProgramItem, EnrollCardResponse, SocialProvider } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||'http://localhost:1234/api';
 
@@ -218,6 +207,22 @@ class ApiService {
     return response.json();
   }
 
+  /**
+   * Logout — revoga o JWT no backend (FIX-11 / SEC-012). Idempotente: erros
+   * são silenciados, o caller sempre limpa o estado local.
+   */
+  async logout(token?: string): Promise<void> {
+    if (!token) return;
+    try {
+      await fetch(`${this.baseUrl}/auth/logout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      // sem rede / 4xx: ainda assim removemos a sessão local.
+    }
+  }
+
   async switchMerchant(merchantId: number, token: string): Promise<StaffLoginResponse> {
     const response = await authedFetch(`${this.baseUrl}/auth/switch-merchant`, {
       method: 'POST',
@@ -286,27 +291,11 @@ class ApiService {
     return response.json();
   }
 
-  // 🔹 LOGIN LIGHT DO CLIENTE
-  async loginOrRegisterCustomer(payload: CustomerLoginRequest): Promise<CustomerLoginResponse> {
-    const response = await authedFetch(`${this.baseUrl}/customers/login-or-register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+  // FIX-02 Fase D — login-light removido do self-service do cliente; o endpoint
+  // /customers/login-or-register agora exige staff (CASHIER/ADMIN). Onboarding
+  // do cliente é exclusivamente via social-login (Google/Facebook).
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Erro ao autenticar cliente: ${response.status} - ${errorText}`);
-    }
-
-    return response.json();
-  }
-
-  // Header de autenticação do cliente — Bearer opcional (FIX-02 Fase B).
-  // Enviado quando há token (social-login); ausente no login-light.
+  // Header de autenticação do cliente — Bearer do JWT emitido no social-login.
   private customerAuthHeaders(token?: string): Record<string, string> {
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
