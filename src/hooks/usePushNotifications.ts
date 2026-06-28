@@ -57,7 +57,6 @@ export function usePushNotifications(customerId: number | undefined, token?: str
       }
 
       await apiService.subscribePush(customerId, sub, token);
-      await apiService.subscribePush(customerId, sub, token);
       setSubscribed(true);
     } catch (err) {
       console.error('Erro ao ativar notificações push:', err);

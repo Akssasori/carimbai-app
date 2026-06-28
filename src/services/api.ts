@@ -309,7 +309,6 @@ class ApiService {
       throw new Error(`Erro ao buscar cartões: ${response.statusText}`);
     }
 
-
     return response.json();
   }
 
@@ -321,7 +320,6 @@ class ApiService {
     if (!response.ok) {
       throw new Error(`Erro ao gerar QR Code: ${response.statusText}`);
     }
-
 
     return response.json();
   }

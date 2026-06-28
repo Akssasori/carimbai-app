@@ -72,7 +72,6 @@ const HomeScreen = ({
     try {
       if (!isPolling) setLoading(true);
       const response = await apiService.getCustomerCards(customerId, customerToken);
-      const response = await apiService.getCustomerCards(customerId, customerToken);
 
       if (response.cards && response.cards.length > 0) {
         const updatedCards = response.cards;
@@ -150,7 +149,6 @@ const HomeScreen = ({
     try {
       setLoadingQR(true);
       const token = await apiService.getCardQR(card.cardId, customerToken);
-      const token = await apiService.getCardQR(card.cardId, customerToken);
       setQrToken(token);
     } catch (err) {
       console.error("Erro ao gerar QR Code:", err);
@@ -164,7 +162,6 @@ const HomeScreen = ({
     if (!card) return;
     try {
       setLoadingRedeemQR(true);
-      const token = await apiService.getRedeemQR(card.cardId, customerToken);
       const token = await apiService.getRedeemQR(card.cardId, customerToken);
       setRedeemQrToken(token);
     } catch (err) {
