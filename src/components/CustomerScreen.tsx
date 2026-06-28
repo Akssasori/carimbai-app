@@ -11,6 +11,7 @@ interface HomeScreenProps {
   customerName?: string;
   customerEmail?: string;
   customerToken?: string;
+  onLogout?: () => void;
 }
 
 const StampCheckSvg = () => (
@@ -40,6 +41,7 @@ const HomeScreen = ({
   customerName = "Cliente",
   customerEmail,
   customerToken,
+  onLogout,
 }: HomeScreenProps) => {
   const [cards, setCards] = useState<Card[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);

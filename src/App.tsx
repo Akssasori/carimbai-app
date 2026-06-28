@@ -37,7 +37,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
-  const { customer, loading, socialLogin } = useCustomer();
+  const { customer, loading, socialLogin, logout } = useCustomer();
 
   return (
     <div className="app-container">
@@ -59,6 +59,7 @@ function App() {
                   customerName={customer.name ?? 'Cliente'}
                   customerEmail={customer.email}
                   customerToken={customer.token}
+                  onLogout={logout}
                 />
               )}
             </>
