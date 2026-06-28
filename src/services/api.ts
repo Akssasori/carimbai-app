@@ -273,6 +273,7 @@ class ApiService {
     return { ...data, created: response.status === 201 };
   }
 
+  
   async socialLoginCustomer(provider: SocialProvider, token: string): Promise<CustomerLoginResponse> {
     const response = await authedFetch(`${this.baseUrl}/customers/social-login`, {
       method: 'POST',
