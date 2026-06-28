@@ -267,9 +267,6 @@ export default function StaffScreen() {
       scannerRef.current = null;
     }
     navigate('/staff', { replace: true });
-    if (rt) {
-      apiService.logoutStaff(rt);
-    }
   }
 
   useEffect(() => {
