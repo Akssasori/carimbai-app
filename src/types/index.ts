@@ -48,15 +48,8 @@ export interface CustomerData {
   email?: string;
   phone?: string;
   providerId?: string;
-  created: boolean;
-  token: string;
-}
-
-export interface CustomerLoginRequest {
-  name?: string;
-  email?: string;
-  phone?: string;
-  providerId?: string;
+  // JWT de cliente emitido no social-login (FIX-02 Fase D — onboarding é social-only).
+  token?: string;
 }
 
 export interface CustomerLoginResponse {
@@ -65,8 +58,8 @@ export interface CustomerLoginResponse {
   email?: string;
   phone?: string;
   providerId?: string;
-  created: boolean;
-  token: string;
+  // JWT de cliente emitido no social-login (FIX-02 Fase D — onboarding é social-only).
+  token?: string;
 }
 
 export interface MerchantInfo {

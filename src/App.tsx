@@ -37,7 +37,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
-  const { customer, loading, loginOrRegister, socialLogin, logout } = useCustomer();
+  const { customer, loading, socialLogin } = useCustomer();
 
   return (
     <div className="app-container">
@@ -50,12 +50,7 @@ function App() {
               {loading && <div>Carregando...</div>}
 
               {!loading && !customer && (
-                <CustomerOnboarding
-                  onSubmit={async ({ name, email, phone }) => {
-                    await loginOrRegister({ name, email, phone, providerId: undefined });
-                  }}
-                  onSocialLogin={socialLogin}
-                />
+                <CustomerOnboarding onSocialLogin={socialLogin} />
               )}
 
               {!loading && customer && (
@@ -64,7 +59,6 @@ function App() {
                   customerName={customer.name ?? 'Cliente'}
                   customerEmail={customer.email}
                   customerToken={customer.token}
-                  onLogout={logout}
                 />
               )}
             </>

@@ -10,8 +10,7 @@ interface HomeScreenProps {
   customerId: number;
   customerName?: string;
   customerEmail?: string;
-  customerToken: string;
-  onLogout: () => void;
+  customerToken?: string;
 }
 
 const StampCheckSvg = () => (
@@ -41,7 +40,6 @@ const HomeScreen = ({
   customerName = "Cliente",
   customerEmail,
   customerToken,
-  onLogout,
 }: HomeScreenProps) => {
   const [cards, setCards] = useState<Card[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -54,8 +52,7 @@ const HomeScreen = ({
   const [modalSuccess, setModalSuccess] = useState<'stamp' | 'redeem' | null>(null);
   const previousStampsCountRef = useRef<number>(0);
   const successTriggeredRef = useRef(false);
-  const { permission, supported, subscribed, loading: pushLoading, subscribe: subscribePush } =
-    usePushNotifications(customerId, customerToken);
+  const { permission, supported, subscribed, loading: pushLoading, subscribe: subscribePush } = usePushNotifications(customerId, customerToken);
 
   const card = cards.length > 0 ? cards[selectedIndex] ?? null : null;
   const cardRef = useRef(card);
@@ -112,7 +109,7 @@ const HomeScreen = ({
     } finally {
       if (!isPolling) setLoading(false);
     }
-  }, [customerId, customerToken, selectedIndex]);
+  }, [customerId, selectedIndex, customerToken]);
 
   const triggerSuccess = useCallback((type: 'stamp' | 'redeem') => {
     if (successTriggeredRef.current) return;

@@ -12,7 +12,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return output;
 }
 
-export function usePushNotifications(customerId: number | undefined, token: string | undefined) {
+export function usePushNotifications(customerId: number | undefined, token?: string) {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [supported, setSupported] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
