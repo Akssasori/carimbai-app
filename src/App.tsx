@@ -37,8 +37,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
-  const { customer, loading, loginOrRegister, socialLogin, logout } = useCustomer();
-  const { customer, loading, socialLogin } = useCustomer();
+  const { customer, loading, loginOrRegister, socialLogin } = useCustomer();
 
   return (
     <div className="app-container">
