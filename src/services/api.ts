@@ -2,23 +2,21 @@ import type { CustomerCardsResponse, QRTokenResponse, StampRequest, StampRespons
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||'http://localhost:1234/api';
 
-const STAFF_STORAGE_KEY = 'carimbai_staff_session';
+import type { CustomerEnrollmentQr } from '../types';
+import { STAFF_STORAGE_KEY, readStaffSession, belongsToSession, commitStaffRefresh } from './staffSession';
 const CUSTOMER_STORAGE_KEY = 'carimbai_customer';
 
 type SessionKind = 'staff' | 'customer';
-
-interface StaffSessionLite {
-  token: string;
-  refreshToken?: string;
-}
 
 // ─── Refresh token: single-flight (evita N requests 401 disparando N refreshes) ──
 
 let inflightRefresh: Promise<string | null> | null = null;
 
-async function tryStaffRefresh(): Promise<string | null> {
+async function tryStaffRefresh(expectedToken: string): Promise<string | null> {
   if (inflightRefresh) return inflightRefresh;
-  inflightRefresh = doStaffRefresh();
+  inflightRefresh = navigator.locks
+    ? Promise.resolve(navigator.locks.request('carimbai:staff-refresh', () => doStaffRefresh(expectedToken)))
+    : doStaffRefresh(expectedToken);
   try {
     return await inflightRefresh;
   } finally {
@@ -26,17 +24,14 @@ async function tryStaffRefresh(): Promise<string | null> {
   }
 }
 
-async function doStaffRefresh(): Promise<string | null> {
+async function doStaffRefresh(expectedToken: string): Promise<string | null> {
   const raw = localStorage.getItem(STAFF_STORAGE_KEY);
   if (!raw) return null;
 
-  let session: StaffSessionLite | null = null;
-  try {
-    session = JSON.parse(raw) as StaffSessionLite;
-  } catch {
-    return null;
-  }
+  const session = readStaffSession();
   if (!session?.refreshToken) return null;
+  if (!belongsToSession(expectedToken, session)) return null;
+  if (session.token !== expectedToken) return session.token;
 
   try {
     const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
@@ -46,8 +41,10 @@ async function doStaffRefresh(): Promise<string | null> {
     });
     if (!res.ok) return null;
     const data: RefreshTokenResponse = await res.json();
-    const updated = { ...session, token: data.token, refreshToken: data.refreshToken };
-    localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(updated));
+    if (!commitStaffRefresh(raw, data.token, data.refreshToken)) {
+      await apiService.logout(data.token, data.refreshToken);
+      return null;
+    }
     return data.token;
   } catch {
     return null;
@@ -60,6 +57,7 @@ function clearSessionAndRedirect(kind: SessionKind): never {
     window.location.replace('/staff');
   } else {
     localStorage.removeItem(CUSTOMER_STORAGE_KEY);
+    sessionStorage.removeItem(CUSTOMER_STORAGE_KEY);
     window.location.replace('/');
   }
   throw new Error('Sessão expirada. Faça login novamente.');
@@ -78,13 +76,31 @@ async function authedFetch(
   init?: RequestInit,
   kind?: SessionKind,
 ): Promise<Response> {
+  const initialSession = kind === 'staff' ? readStaffSession() : null;
+  if (kind === 'staff') {
+    const headers = new Headers(init?.headers);
+    const token = headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
+    if (!initialSession || !belongsToSession(token, initialSession)) {
+      throw new Error('A sessao mudou. Atualize a tela antes de continuar.');
+    }
+    headers.set('Authorization', `Bearer ${initialSession.token}`);
+    init = { ...init, headers };
+  }
   let response = await fetch(url, init);
 
   if (!kind) return response;
 
   if (response.status === 401 && kind === 'staff') {
-    const newToken = await tryStaffRefresh();
+    const current = readStaffSession();
+    if (!current || !initialSession || !belongsToSession(initialSession.token, current)) {
+      throw new Error('A sessao mudou. Atualize a tela antes de continuar.');
+    }
+    const newToken = await tryStaffRefresh(initialSession.token);
     if (newToken && init) {
+      const current = readStaffSession();
+      if (!current || !belongsToSession(initialSession.token, current)) {
+        throw new Error('A sessao mudou. Atualize a tela antes de continuar.');
+      }
       const newHeaders = new Headers(init.headers);
       newHeaders.set('Authorization', `Bearer ${newToken}`);
       response = await fetch(url, { ...init, headers: newHeaders });
@@ -92,6 +108,12 @@ async function authedFetch(
   }
 
   if (response.status === 401) {
+    if (kind === 'staff') {
+      const current = readStaffSession();
+      if (current && initialSession && !belongsToSession(initialSession.token, current)) {
+        throw new Error('A sessao mudou. Atualize a tela antes de continuar.');
+      }
+    }
     clearSessionAndRedirect(kind);
   }
 
@@ -99,6 +121,17 @@ async function authedFetch(
 }
 
 class ApiService {
+  async privacy<T>(path: string, token?: string, kind: SessionKind = 'customer', method = 'GET', body?: unknown): Promise<T> {
+    const response = await authedFetch(`${this.baseUrl}${path}`, {
+      method, cache: 'no-store',
+      headers: { Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    }, token ? kind : undefined);
+    if (!response.ok) throw new Error(`Nao foi possivel concluir (${response.status}). Tente novamente ou contate o canal de privacidade.`);
+    return response.status === 204 ? undefined as T : response.json() as Promise<T>;
+  }
+
   private baseUrl: string;
 
   constructor(baseUrl: string = API_BASE_URL) {
@@ -169,19 +202,8 @@ class ApiService {
    * Logout server-side: revoga o refresh token. Front deve descartar a sessao em seguida.
    * Idempotente; ignora falhas (importante para nao bloquear logout local em rede flaky).
    */
-  async logoutStaff(refreshToken: string): Promise<void> {
-    try {
-      await fetch(`${this.baseUrl}/auth/logout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({ refreshToken }),
-      });
-    } catch {
-      // logout deve sempre concluir mesmo se a rede falhar
-    }
+  async logoutStaff(token?: string, refreshToken?: string): Promise<void> {
+    await this.logout(token, refreshToken);
   }
 
   async loginStaff(email: string, password: string, merchantId?: number): Promise<StaffLoginResponse> {
@@ -211,12 +233,16 @@ class ApiService {
    * Logout — revoga o JWT no backend (FIX-11 / SEC-012). Idempotente: erros
    * são silenciados, o caller sempre limpa o estado local.
    */
-  async logout(token?: string): Promise<void> {
-    if (!token) return;
+  async logout(token?: string, refreshToken?: string): Promise<void> {
+    if (!token && !refreshToken) return;
     try {
       await fetch(`${this.baseUrl}/auth/logout`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ refreshToken }),
       });
     } catch {
       // sem rede / 4xx: ainda assim removemos a sessão local.
@@ -253,7 +279,7 @@ class ApiService {
     return response.json();
   }
 
-  async enrollCustomer(programId: number, customerId: number, token: string): Promise<EnrollCardResponse> {
+  async enrollCustomer(programId: number, qr: CustomerEnrollmentQr, token: string): Promise<EnrollCardResponse> {
     const response = await authedFetch(`${this.baseUrl}/cards`, {
       method: 'POST',
       headers: {
@@ -261,7 +287,10 @@ class ApiService {
         'Accept': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ programId, customerId }),
+      body: JSON.stringify({
+        programId, customerId: qr.customerId,
+        enrollmentProof: { nonce: qr.nonce, exp: qr.exp, sig: qr.sig },
+      }),
     }, 'staff');
 
     if (!response.ok) {
@@ -302,9 +331,9 @@ class ApiService {
   }
 
   async getCustomerCards(customerId: number, token?: string): Promise<CustomerCardsResponse> {
-    const response = await fetch(`${this.baseUrl}/cards/customer/${customerId}`, {
+    const response = await authedFetch(`${this.baseUrl}/cards/customer/${customerId}`, {
       headers: this.customerAuthHeaders(token),
-    });
+    }, 'customer');
 
     if (!response.ok) {
       throw new Error(`Erro ao buscar cartões: ${response.statusText}`);
@@ -314,9 +343,9 @@ class ApiService {
   }
 
   async getCardQR(cardId: number, token?: string): Promise<QRTokenResponse> {
-    const response = await fetch(`${this.baseUrl}/qr/${cardId}`, {
+    const response = await authedFetch(`${this.baseUrl}/qr/${cardId}`, {
       headers: this.customerAuthHeaders(token),
-    });
+    }, 'customer');
 
     if (!response.ok) {
       throw new Error(`Erro ao gerar QR Code: ${response.statusText}`);
@@ -360,9 +389,9 @@ class ApiService {
   }
 
   async getRedeemQR(cardId: number, token?: string): Promise<RedeemQrTokenResponse> {
-    const response = await fetch(`${this.baseUrl}/cards/${cardId}/redeem-qr`, {
+    const response = await authedFetch(`${this.baseUrl}/cards/${cardId}/redeem-qr`, {
       headers: this.customerAuthHeaders(token),
-    });
+    }, 'customer');
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -650,6 +679,14 @@ class ApiService {
     }
   }
 
+  async getEnrollmentQr(token?: string): Promise<CustomerEnrollmentQr> {
+    const response = await authedFetch(`${this.baseUrl}/customers/me/enrollment-qr`, {
+      headers: this.customerAuthHeaders(token),
+    }, 'customer');
+    if (!response.ok) throw new Error('Nao foi possivel gerar o QR de inscricao.');
+    return response.json();
+  }
+
   async getVapidPublicKey(): Promise<{ publicKey: string }> {
     const response = await authedFetch(`${this.baseUrl}/notifications/vapid-public-key`);
     if (!response.ok) {
@@ -664,7 +701,7 @@ class ApiService {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...this.customerAuthHeaders(token) },
       body: JSON.stringify({
-        customerId,  // ignorado pelo backend (vem do JWT); enviado por compatibilidade
+        customerId,
         endpoint: json.endpoint,
         keys: {
           p256dh: json.keys?.p256dh,

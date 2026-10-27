@@ -80,6 +80,7 @@ export default function SideNav({ role, onLogout }: SideNavProps) {
             key={item.to}
             to={item.to}
             title={item.title}
+            aria-label={item.title}
             className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           >
             {item.icon}
@@ -87,7 +88,7 @@ export default function SideNav({ role, onLogout }: SideNavProps) {
         ))}
       </nav>
       <div className="sidebar-bottom">
-        <button className="nav-item" type="button" onClick={onLogout} title="Sair">
+        <button className="nav-item" type="button" onClick={onLogout} title="Sair" aria-label="Sair">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
             <polyline points="16 17 21 12 16 7" />

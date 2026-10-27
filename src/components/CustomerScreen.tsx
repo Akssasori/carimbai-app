@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import QRCode from "react-qr-code";
+import EnrollmentQr from "./EnrollmentQr";
 import "./CustomerScreen.css";
 import type { Card, QRTokenResponse, RedeemQrTokenResponse } from "../types";
 import { apiService } from "../services/api";
@@ -51,10 +51,13 @@ const HomeScreen = ({
   const [redeemQrToken, setRedeemQrToken] = useState<RedeemQrTokenResponse | null>(null);
   const [loadingQR, setLoadingQR] = useState(false);
   const [loadingRedeemQR, setLoadingRedeemQR] = useState(false);
+  const [showEnrollment, setShowEnrollment] = useState(false);
   const [modalSuccess, setModalSuccess] = useState<'stamp' | 'redeem' | null>(null);
   const previousStampsCountRef = useRef<number>(0);
   const successTriggeredRef = useRef(false);
-  const { permission, supported, subscribed, loading: pushLoading, subscribe: subscribePush } = usePushNotifications(customerId, customerToken);
+  const seenStampsRef = useRef<Map<number, number>>(new Map());
+  const [justFilledIndices, setJustFilledIndices] = useState<number[]>([]);
+  const { permission, supported, subscribed, loading: pushLoading, error: pushError, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications(customerId, customerToken);
 
   const card = cards.length > 0 ? cards[selectedIndex] ?? null : null;
   const cardRef = useRef(card);
@@ -131,10 +134,25 @@ const HomeScreen = ({
   }, [customerId]);
 
   useEffect(() => {
-    if (!modalIsOpen) return;
+    if (!modalIsOpen && (loading || (cards.length > 0 && !showEnrollment))) return;
     const intervalId = setInterval(() => fetchCards(true), 3000);
     return () => clearInterval(intervalId);
-  }, [modalIsOpen, fetchCards]);
+  }, [modalIsOpen, fetchCards, loading, cards.length, showEnrollment]);
+
+  useEffect(() => {
+    if (!card) return;
+    const previouslySeen = seenStampsRef.current.get(card.cardId);
+    seenStampsRef.current.set(card.cardId, card.stampsCount);
+
+    if (previouslySeen === undefined || card.stampsCount <= previouslySeen) return;
+
+    const newIndices = [];
+    for (let i = previouslySeen; i < card.stampsCount; i++) newIndices.push(i);
+    setJustFilledIndices(newIndices);
+
+    const timeoutId = setTimeout(() => setJustFilledIndices([]), 650);
+    return () => clearTimeout(timeoutId);
+  }, [card?.cardId, card?.stampsCount]);
 
   const handleSelectCard = (index: number) => {
     setSelectedIndex(index);
@@ -228,12 +246,12 @@ const HomeScreen = ({
         <h1 className="greeting">Olá, {customerName}!</h1>
         <p className="subtitle">Bem-vindo ao seu cartão de fidelidade</p>
       </div>
-      {supported && permission !== 'granted' && (
+      {supported && !subscribed && (
         <button
           className="btn-push-toggle"
           onClick={subscribePush}
           disabled={pushLoading || permission === 'denied'}
-          title={permission === 'denied' ? 'Notificações bloqueadas no navegador' : 'Ativar notificações'}
+          title={permission === 'denied' ? 'Notificações bloqueadas no navegador' : 'Avisos opcionais dos cartoes, sem publicidade. Consulte Privacidade.'}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -250,12 +268,12 @@ const HomeScreen = ({
           </svg>
         </span>
       )}
+      {subscribed && <button disabled={pushLoading} onClick={() => void unsubscribePush()}>Desativar avisos</button>}
+      {pushError && <p role="alert">{pushError}</p>}
     </div>
   );
 
   if (cards.length === 0) {
-    const idQrValue = JSON.stringify({ type: "CUSTOMER_ID", customerId });
-
     return (
       <div className="home-screen">
         {renderNavBar()}
@@ -264,14 +282,7 @@ const HomeScreen = ({
           <div className="empty-cards-state">
             <h2>Nenhuma promoção ativa</h2>
             <p>Mostre este código ao estabelecimento para se inscrever em uma promoção</p>
-            <div className="id-qr-wrapper">
-              <QRCode
-                value={idQrValue}
-                size={200}
-                level="H"
-                style={{ maxWidth: "100%", height: "auto" }}
-              />
-            </div>
+            <EnrollmentQr token={customerToken} />
             <p className="id-qr-hint">Peça ao atendente para escanear seu QR code</p>
           </div>
         </main>
@@ -302,6 +313,11 @@ const HomeScreen = ({
           </div>
         )}
 
+        <button type="button" onClick={() => setShowEnrollment(value => !value)}>
+          {showEnrollment ? 'Fechar inscricao' : 'Participar de outra promocao'}
+        </button>
+        {showEnrollment && <EnrollmentQr token={customerToken} />}
+
         {card && (
           <>
             <div className="card-container">
@@ -320,14 +336,18 @@ const HomeScreen = ({
                   </div>
 
                   <div className="stamps-grid">
-                    {[...Array(card.stampsNeeded)].map((_, index) => (
-                      <div
-                        key={index}
-                        className={`stamp ${index < card.stampsCount ? "filled" : ""}`}
-                      >
-                        {index < card.stampsCount ? <StampCheckSvg /> : index + 1}
-                      </div>
-                    ))}
+                    {[...Array(card.stampsNeeded)].map((_, index) => {
+                      const filled = index < card.stampsCount;
+                      const justFilled = justFilledIndices.includes(index);
+                      return (
+                        <div
+                          key={index}
+                          className={`stamp ${filled ? "filled" : ""} ${justFilled ? "just-filled" : ""}`}
+                        >
+                          {filled ? <StampCheckSvg /> : index + 1}
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <div className="progress-info">
@@ -337,7 +357,7 @@ const HomeScreen = ({
                     <div className="progress-bar">
                       <div
                         className="progress-fill"
-                        style={{ width: `${progress}%` }}
+                        style={{ transform: `scaleX(${progress / 100})` }}
                       ></div>
                     </div>
                   </div>
