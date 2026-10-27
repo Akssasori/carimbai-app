@@ -3,7 +3,9 @@ import StaffScreen from './components/StaffScreen';
 import { useCustomer } from './hooks/useCustomer';
 import { CustomerOnboarding } from './components/CustomerLogin';
 import './App.css';
-import { Route, Routes, Navigate } from 'react-router-dom';
+import { Route, Routes, Navigate, Link } from 'react-router-dom';
+import PrivacyPage from './components/PrivacyPage';
+import { readStaffSession, type StaffSessionSnapshot } from './services/staffSession';
 import StaffLogin from './components/StaffLogin';
 import ForgotPassword from './components/staff/ForgotPassword';
 import ResetPassword from './components/staff/ResetPassword';
@@ -11,7 +13,7 @@ import ProgramsAdmin from './components/admin/ProgramsAdmin';
 import StaffAdmin from './components/admin/StaffAdmin';
 import LocationsAdmin from './components/admin/LocationsAdmin';
 
-interface StaffSessionLite {
+interface StaffSessionLite extends StaffSessionSnapshot {
   role?: 'ADMIN' | 'CASHIER';
 }
 
@@ -21,15 +23,7 @@ interface StaffSessionLite {
  * Sessao nao-ADMIN → /staff/dashboard.
  */
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const raw = localStorage.getItem('carimbai_staff_session');
-  if (!raw) return <Navigate to="/staff" replace />;
-
-  let session: StaffSessionLite | null = null;
-  try {
-    session = JSON.parse(raw) as StaffSessionLite;
-  } catch {
-    session = null;
-  }
+  const session = readStaffSession<StaffSessionLite>();
 
   if (!session) return <Navigate to="/staff" replace />;
   if (session.role !== 'ADMIN') return <Navigate to="/staff/dashboard" replace />;
@@ -42,6 +36,8 @@ function App() {
   return (
     <div className="app-container">
       <Routes>
+        <Route path="/privacidade" element={<PrivacyPage token={customer?.token} />} />
+        <Route path="/staff/privacy" element={<PrivacyPage staff />} />
         {/* Rota padrão: fluxo do cliente */}
         <Route
           path="/"
@@ -80,6 +76,7 @@ function App() {
         {/* Qualquer outra URL redireciona pra home do cliente */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <footer className="privacy-links"><Link to="/privacidade">Privacidade e meus dados</Link> | <Link to="/staff/privacy">Privacidade do lojista</Link></footer>
     </div>
   );
 }

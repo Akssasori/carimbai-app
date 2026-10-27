@@ -114,7 +114,7 @@
   display: block;
   margin-top: 6px;
   font-size: 14px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .header-right {
@@ -127,17 +127,28 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 44px;
   background: white;
   padding: 9px 17px;
   border-radius: 6px;
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
+.location-select-required {
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+}
+
 .location-select label {
   font-size: 14px;
-  color: #9ca3af;
+  color: #6b7280;
   font-weight: 500;
   white-space: nowrap;
+}
+
+.location-select-required label {
+  color: #4338ca;
+  font-weight: 700;
 }
 
 .location-select input,
@@ -153,22 +164,6 @@
 .location-select select {
   width: auto;
   cursor: pointer;
-}
-
-.btn-logout {
-  background: #f87171;
-  color: white;
-  border: none;
-  padding: 10px 24px;
-  border-radius: 6px;
-  font-weight: 700;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn-logout:hover {
-  background: #ef4444;
 }
 
 /* ── Stats Row ── */
@@ -210,9 +205,9 @@
   color: #3b82f6;
 }
 
-.stat-icon.orange {
-  background: #fff7ed;
-  color: #f97316;
+.stat-icon.amber {
+  background: #fef3c7;
+  color: #d97706;
 }
 
 .stat-icon.green {
@@ -235,7 +230,7 @@
 
 .stat-label {
   font-size: 14px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 /* ── Content Grid ── */
@@ -265,9 +260,22 @@
 }
 
 .scanner-desc {
-  margin: 0 0 20px 0;
+  margin: 0 0 4px 0;
   font-size: 14px;
-  color: #9ca3af;
+  color: #6b7280;
+}
+
+.scanner-active-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4338ca;
+  background: #eef2ff;
+  padding: 4px 10px;
+  border-radius: 20px;
+  margin-bottom: 16px;
 }
 
 /* ── Scanner Placeholder ── */
@@ -319,7 +327,7 @@
 }
 
 .btn-cancel {
-  background: #f87171;
+  background: #dc2626;
   color: white;
   border: none;
   padding: 12px;
@@ -330,19 +338,78 @@
 }
 
 .btn-cancel:hover {
-  background: #ef4444;
+  background: #b91c1c;
 }
 
 /* ── Error / Success Messages ── */
 
 .error-message {
-  background: #fef2f2;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #fee2e2;
   border: 1px solid #fecaca;
   color: #dc2626;
   padding: 12px 16px;
   border-radius: 8px;
   margin-bottom: 16px;
   font-size: 14px;
+}
+
+.error-message-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── Dashboard error banner ── */
+
+.dashboard-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 14px 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.dashboard-error-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.dashboard-error-text {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.dashboard-error-retry {
+  background: white;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, transform 0.1s;
+  font-family: inherit;
+}
+
+.dashboard-error-retry:hover:not(:disabled) {
+  background: #fee2e2;
+}
+
+.dashboard-error-retry:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* ── Result Card ── */
@@ -503,8 +570,8 @@
 }
 
 .activity-icon.reward {
-  background: #fff7ed;
-  color: #f97316;
+  background: #fef3c7;
+  color: #d97706;
 }
 
 .activity-info {
@@ -523,7 +590,7 @@
 
 .activity-meta {
   font-size: 13px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .activity-time {
@@ -559,7 +626,7 @@
 .enroll-desc {
   margin: 0 0 20px 0;
   font-size: 14px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .enroll-scan-area {
@@ -812,5 +879,13 @@
   .header-right {
     width: 100%;
     flex-wrap: wrap;
+  }
+
+  .dashboard-error-banner {
+    flex-wrap: wrap;
+  }
+
+  .dashboard-error-retry {
+    width: 100%;
   }
 }

@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { apiService } from '../services/api';
 import './StaffScreen.css';
-import type { QRCodeData, MerchantInfo, ProgramItem, DashboardMetrics, RecentStampItem, RecentRewardItem } from '../types';
+import type { QRCodeData, ProgramItem, DashboardMetrics, RecentStampItem, RecentRewardItem, CustomerEnrollmentQr } from '../types';
+import { useStaffSession, type StaffSession } from '../hooks/useStaffSession';
+import { parseEnrollmentQr } from '../services/enrollment';
+import { writeStaffSession } from '../services/staffSession';
 import SideNav from './admin/SideNav';
 
 type FeedItem =
@@ -23,29 +26,12 @@ interface RedeemResult {
   timestamp: string;
 }
 
-interface StaffSession {
-  token: string;
-  refreshToken: string;
-  staffId: number;
-  role: 'ADMIN' | 'CASHIER';
-  merchantId: number;
-  merchants: MerchantInfo[];
-}
-
 const STAFF_STORAGE_KEY = 'carimbai_staff_session';
 
 export default function StaffScreen() {
   const navigate = useNavigate();
 
-  const [session, setSession] = useState<StaffSession | null>(() => {
-    const raw = localStorage.getItem(STAFF_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw) as StaffSession;
-    } catch {
-      return null;
-    }
-  });
+  const { session, setSession, logout } = useStaffSession();
 
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +40,8 @@ export default function StaffScreen() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [recentStamps, setRecentStamps] = useState<RecentStampItem[]>([]);
   const [recentRewards, setRecentRewards] = useState<RecentRewardItem[]>([]);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const processingRef = useRef(false);
   const [locationId, setLocationId] = useState<string>('1');
@@ -61,6 +49,8 @@ export default function StaffScreen() {
   const [switchingMerchant, setSwitchingMerchant] = useState(false);
 
   const [enrollCustomerId, setEnrollCustomerId] = useState('');
+  const [enrollQrText, setEnrollQrText] = useState('');
+  const [enrollProof, setEnrollProof] = useState<CustomerEnrollmentQr | null>(null);
   const [enrollPrograms, setEnrollPrograms] = useState<ProgramItem[]>([]);
   const [enrollLoading, setEnrollLoading] = useState(false);
   const [enrollError, setEnrollError] = useState<string | null>(null);
@@ -74,10 +64,15 @@ export default function StaffScreen() {
 
   const handleSwitchMerchant = async (newMerchantId: number) => {
     if (!session || newMerchantId === session.merchantId) return;
+    const snapshot = localStorage.getItem(STAFF_STORAGE_KEY);
     setSwitchingMerchant(true);
     setError(null);
     try {
       const res = await apiService.switchMerchant(newMerchantId, session.token);
+      if (localStorage.getItem(STAFF_STORAGE_KEY) !== snapshot) {
+        await apiService.logout(res.token, res.refreshToken);
+        throw new Error('A sessao mudou durante a troca de loja. Entre novamente.');
+      }
       const updatedSession: StaffSession = {
         ...session,
         token: res.token,
@@ -87,7 +82,11 @@ export default function StaffScreen() {
         merchants: res.merchants ?? session.merchants,
       };
       setSession(updatedSession);
-      localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(updatedSession));
+      writeStaffSession(updatedSession, updatedSession.expiresAt);
+      setEnrollProof(null);
+      setEnrollCustomerId('');
+      setEnrollQrText('');
+      setEnrollPrograms([]);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao trocar merchant';
       setError(message);
@@ -97,12 +96,15 @@ export default function StaffScreen() {
   };
 
   const handleLoadPrograms = async () => {
-    if (!session || !enrollCustomerId.trim()) return;
+    if (!session) return;
     setEnrollLoading(true);
     setEnrollError(null);
     setEnrollSuccess(null);
     setEnrollPrograms([]);
     try {
+      const proof = parseEnrollmentQr(enrollQrText);
+      setEnrollProof(proof);
+      setEnrollCustomerId(String(proof.customerId));
       const programs = await apiService.getMerchantPrograms(session.merchantId);
       if (programs.length === 0) {
         setEnrollError('Nenhuma promoção ativa para este merchant.');
@@ -118,8 +120,8 @@ export default function StaffScreen() {
 
   const handleEnrollCustomer = async (programId: number) => {
     const customerId = Number(enrollCustomerId.trim());
-    if (!customerId || customerId <= 0) {
-      setEnrollError('Informe um Customer ID válido.');
+    if (!enrollProof || enrollProof.exp <= Date.now() / 1000) {
+      setEnrollError('Escaneie um QR de inscricao valido e atualizado.');
       return;
     }
     if (!session) {
@@ -130,7 +132,7 @@ export default function StaffScreen() {
     setEnrollError(null);
     setEnrollSuccess(null);
     try {
-      const res = await apiService.enrollCustomer(programId, customerId, session.token);
+      const res = await apiService.enrollCustomer(programId, enrollProof, session.token);
       if (res.created) {
         setEnrollSuccess(`Cliente #${customerId} inscrito com sucesso! Card #${res.id} criado.`);
       } else {
@@ -141,10 +143,17 @@ export default function StaffScreen() {
       setEnrollError(message);
     } finally {
       setEnrollingProgramId(null);
+      setEnrollProof(null);
+      setEnrollCustomerId('');
+      setEnrollQrText('');
+      setEnrollPrograms([]);
     }
   };
 
   const startEnrollScan = () => {
+    setEnrollProof(null);
+    setEnrollCustomerId('');
+    setEnrollQrText('');
     setEnrollScanning(true);
     setEnrollError(null);
     setEnrollSuccess(null);
@@ -165,7 +174,7 @@ export default function StaffScreen() {
     if (enrollProcessingRef.current) return;
     enrollProcessingRef.current = true;
     try {
-      const data = JSON.parse(decodedText);
+      const data = parseEnrollmentQr(decodedText);
       if (enrollScannerRef.current) {
         await enrollScannerRef.current.clear();
         enrollScannerRef.current = null;
@@ -173,6 +182,8 @@ export default function StaffScreen() {
       setEnrollScanning(false);
 
       if (data.type === 'CUSTOMER_ID' && data.customerId) {
+        setEnrollProof(data);
+        setEnrollQrText(decodedText);
         setEnrollCustomerId(String(data.customerId));
         if (session) {
           setEnrollLoading(true);
@@ -235,6 +246,7 @@ export default function StaffScreen() {
 
   const refreshDashboard = async () => {
     if (!session) return;
+    setDashboardLoading(true);
     try {
       const [m, stamps, rewards] = await Promise.all([
         apiService.getStaffDashboardMetrics(session.token),
@@ -244,8 +256,13 @@ export default function StaffScreen() {
       setMetrics(m);
       setRecentStamps(stamps);
       setRecentRewards(rewards);
+      setDashboardError(null);
     } catch (err) {
       console.error('Erro ao atualizar dashboard:', err);
+      const message = err instanceof Error ? err.message : 'Erro desconhecido';
+      setDashboardError(`Não foi possível atualizar o painel. ${message}`);
+    } finally {
+      setDashboardLoading(false);
     }
   };
 
@@ -257,10 +274,7 @@ export default function StaffScreen() {
 
   function handleLogout() {
     // FIX-11 / SEC-012 — revoga o JWT no backend (fire-and-forget; sempre limpa local).
-    const token = session?.token;
-    setSession(null);
-    localStorage.removeItem(STAFF_STORAGE_KEY);
-    apiService.logout(token).catch(() => {});
+    logout();
     setScanning(false);
     if (scannerRef.current) {
       scannerRef.current.clear().catch(console.error);
@@ -477,8 +491,8 @@ export default function StaffScreen() {
                 </select>
               </div>
             )}
-            <div className="location-select">
-              <label>Loja ID:</label>
+            <div className="location-select location-select-required">
+              <label>Loja ID *</label>
               <input
                 type="number"
                 value={locationId}
@@ -487,7 +501,7 @@ export default function StaffScreen() {
               />
             </div>
             <div className="location-select">
-              <label>PIN Caixa:</label>
+              <label>PIN Caixa</label>
               <input
                 type="password"
                 value={cashierPin}
@@ -495,9 +509,24 @@ export default function StaffScreen() {
                 placeholder="opcional"
               />
             </div>
-            <button className="btn-logout" onClick={handleLogout}>Sair</button>
           </div>
         </header>
+
+        {dashboardError && (
+          <div className="dashboard-error-banner">
+            <svg className="dashboard-error-icon" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.72-1.36 3.486 0l6.516 11.598c.75 1.334-.213 2.98-1.742 2.98H3.483c-1.53 0-2.492-1.646-1.743-2.98L8.257 3.1zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <span className="dashboard-error-text">{dashboardError}</span>
+            <button
+              className="dashboard-error-retry"
+              onClick={refreshDashboard}
+              disabled={dashboardLoading}
+            >
+              {dashboardLoading ? 'Atualizando...' : 'Tentar novamente'}
+            </button>
+          </div>
+        )}
 
         <div className="stats-row">
           <div className="stat-card">
@@ -513,7 +542,7 @@ export default function StaffScreen() {
             </div>
           </div>
           <div className="stat-card">
-            <div className="stat-icon orange">
+            <div className="stat-icon amber">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 12 20 22 4 22 4 12" />
                 <rect x="2" y="7" width="20" height="5" />
@@ -545,8 +574,16 @@ export default function StaffScreen() {
           <section className="scanner-card">
             <h2>Escanear QR Code</h2>
             <p className="scanner-desc">Aponte a câmera para o QR Code do cliente</p>
+            <span className="scanner-active-location">Escaneando para: Loja #{locationId || '—'}</span>
 
-            {error && <div className="error-message">{error}</div>}
+            {error && (
+              <div className="error-message">
+                <svg className="error-message-icon" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.72-1.36 3.486 0l6.516 11.598c.75 1.334-.213 2.98-1.742 2.98H3.483c-1.53 0-2.492-1.646-1.743-2.98L8.257 3.1zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <span>{error}</span>
+              </div>
+            )}
 
             {!scanning ? (
               <div className="scanner-placeholder" onClick={startScanning}>
@@ -676,9 +713,16 @@ export default function StaffScreen() {
 
         <section className="enroll-section">
           <h2>Inscrever Cliente em Promoção</h2>
-          <p className="enroll-desc">Escaneie o QR de identificação do cliente ou digite o ID manualmente</p>
+          <p className="enroll-desc">Escaneie o QR temporario de inscricao gerado pelo cliente autenticado.</p>
 
-          {enrollError && <div className="error-message">{enrollError}</div>}
+          {enrollError && (
+            <div className="error-message">
+              <svg className="error-message-icon" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.72-1.36 3.486 0l6.516 11.598c.75 1.334-.213 2.98-1.742 2.98H3.483c-1.53 0-2.492-1.646-1.743-2.98L8.257 3.1zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <span>{enrollError}</span>
+            </div>
+          )}
           {enrollSuccess && <div className="enroll-success">{enrollSuccess}</div>}
 
           {!enrollScanning && !enrollCustomerId.trim() && enrollPrograms.length === 0 && (
@@ -711,21 +755,26 @@ export default function StaffScreen() {
 
           <div className="enroll-form">
             <div className="enroll-divider">
-              <span>ou digite manualmente</span>
+              <span>ou cole o conteudo completo do QR</span>
             </div>
             <div className="enroll-input-group">
-              <label>Customer ID:</label>
+              <label>QR de inscricao{enrollCustomerId ? ` (cliente #${enrollCustomerId})` : ''}:</label>
               <input
-                type="number"
-                value={enrollCustomerId}
-                onChange={e => setEnrollCustomerId(e.target.value)}
-                placeholder="Ex: 1"
-                min="1"
+                type="text"
+                value={enrollQrText}
+                onChange={e => {
+                  setEnrollQrText(e.target.value);
+                  setEnrollProof(null);
+                  setEnrollCustomerId('');
+                  setEnrollPrograms([]);
+                }}
+                placeholder="Cole o JSON completo do QR temporario"
+                maxLength={2048}
               />
               <button
                 className="btn-search"
                 onClick={handleLoadPrograms}
-                disabled={enrollLoading || !enrollCustomerId.trim()}
+                disabled={enrollLoading || !enrollQrText.trim()}
               >
                 {enrollLoading ? 'Buscando...' : 'Buscar Promoções'}
               </button>

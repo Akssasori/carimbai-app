@@ -1,0 +1,11 @@
+.privacy-page { max-width: 960px; margin: 0 auto; padding: 24px; color: #1f2937; background: #fff; }
+.privacy-page section { margin: 24px 0; padding: 20px; border: 1px solid #d1d5db; border-radius: 8px; }
+.privacy-page pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.privacy-page label { display: block; margin: 12px 0; }
+.privacy-page input, .privacy-page textarea, .privacy-page select { display: block; max-width: 100%; padding: 8px; border: 1px solid #6b7280; border-radius: 4px; }
+.privacy-page textarea { width: 100%; min-height: 80px; }
+.privacy-page button { padding: 10px; margin: 4px; cursor: pointer; border: 1px solid #6b7280; border-radius: 4px; }
+.privacy-page button:disabled { cursor: not-allowed; opacity: .55; }
+.privacy-page [role="alert"] { color: #991b1b; }
+.privacy-page [role="status"] { color: #14532d; }
+.privacy-links { padding: 16px; text-align: center; background: #fff; }

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
 import React from 'react';
 
-const STAFF_STORAGE_KEY = 'carimbai_staff_session';
+import { readStaffSession, writeStaffSession } from '../services/staffSession';
 
 export default function StaffLogin() {
   const [email, setEmail] = useState('');
@@ -13,15 +13,7 @@ export default function StaffLogin() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const raw = localStorage.getItem(STAFF_STORAGE_KEY);
-    if (raw) {
-      try {
-        JSON.parse(raw);
-        navigate('/staff/dashboard', { replace: true });
-      } catch {
-        setError('Failed to parse staff data from local storage');
-      }
-    }
+    if (readStaffSession()) navigate('/staff/dashboard', { replace: true });
   }, [navigate]);
 
   const handleSubmit = async () => {
@@ -37,7 +29,7 @@ export default function StaffLogin() {
         merchantId: res.merchantId,
         merchants: res.merchants,
       };
-      localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(session));
+      writeStaffSession({ ...session, expiresAt: 0 });
       navigate('/staff/dashboard', { replace: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao fazer login';

@@ -47,7 +47,6 @@ export interface CustomerData {
   name?: string;
   email?: string;
   phone?: string;
-  providerId?: string;
   // JWT de cliente emitido no social-login (FIX-02 Fase D — onboarding é social-only).
   token?: string;
 }
@@ -57,7 +56,6 @@ export interface CustomerLoginResponse {
   name?: string;
   email?: string;
   phone?: string;
-  providerId?: string;
   // JWT de cliente emitido no social-login (FIX-02 Fase D — onboarding é social-only).
   token?: string;
 }
@@ -148,6 +146,14 @@ export interface EnrollCardResponse {
   stampsCount: number;
   status: string;
   created: boolean;
+}
+
+export interface CustomerEnrollmentQr {
+  type: 'CUSTOMER_ID';
+  customerId: number;
+  nonce: string;
+  exp: number;
+  sig: string;
 }
 
 export type SocialProvider = 'GOOGLE' | 'FACEBOOK';

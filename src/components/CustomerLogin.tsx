@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { GoogleLogin } from '@react-oauth/google';
+import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
 import FacebookLogin from '@greatsumini/react-facebook-login';
 import { Stamp } from 'lucide-react';
 import type { SocialProvider } from '../types';
@@ -13,6 +13,7 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 export function CustomerOnboarding({ onSocialLogin }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selected, setSelected] = useState<SocialProvider | null>(null);
 
   const handleSocial = async (provider: SocialProvider, token: string) => {
     if (!token) {
@@ -99,8 +100,10 @@ export function CustomerOnboarding({ onSocialLogin }: Props) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
             {/* GoogleLogin retorna credential (ID token JWT) — compatível com GoogleIdTokenVerifier no backend */}
-            {GOOGLE_CLIENT_ID && (
+            {GOOGLE_CLIENT_ID && selected !== 'GOOGLE' && <button type="button" onClick={() => setSelected('GOOGLE')}>Continuar com Google</button>}
+            {GOOGLE_CLIENT_ID && selected === 'GOOGLE' && (
               <div style={{ width: '100%' }}>
+                <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
                 <GoogleLogin
                   onSuccess={(res) => handleSocial('GOOGLE', res.credential ?? '')}
                   onError={() => handleSocial('GOOGLE', '')}
@@ -110,15 +113,16 @@ export function CustomerOnboarding({ onSocialLogin }: Props) {
                   theme="outline"
                   size="large"
                 />
+                </GoogleOAuthProvider>
               </div>
             )}
 
             {/* Facebook */}
-            <FacebookLogin
+            {import.meta.env.VITE_FACEBOOK_APP_ID && selected !== 'FACEBOOK' && <button type="button" onClick={() => setSelected('FACEBOOK')}>Continuar com Facebook</button>}
+            {selected === 'FACEBOOK' && <FacebookLogin
               appId={import.meta.env.VITE_FACEBOOK_APP_ID ?? ''}
               onSuccess={(res: { accessToken: string }) => handleSocial('FACEBOOK', res.accessToken)}
-              onFail={(err: unknown) => {
-                console.warn('Facebook login error', err);
+              onFail={() => {
                 setError('Erro ao entrar com Facebook');
               }}
               render={({ onClick }: { onClick?: () => void }) => (
@@ -161,7 +165,7 @@ export function CustomerOnboarding({ onSocialLogin }: Props) {
                   Continuar com Facebook
                 </button>
               )}
-            />
+            />}
           </div>
 
           {error && (
